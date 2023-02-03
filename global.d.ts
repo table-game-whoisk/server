@@ -1,5 +1,9 @@
 namespace NodeJS {
   interface ProcessEnv {
-    SERVER_PORT: string
+    SERVER_PORT: string,
+    DB_NAME: string,
+    DB_USER: string,
+    DB_PASSWORD: string,
+    HOST: string
   }
 }
