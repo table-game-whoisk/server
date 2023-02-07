@@ -1,4 +1,4 @@
 declare interface UserProp {
-  id: string;
-  ip?: string;
+  id: string
+  nickname?: string
 }
