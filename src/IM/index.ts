@@ -4,12 +4,14 @@ import { logger } from "../utils/logger";
 
 class IM {
   room: Room = new Map();
+  users: WebSocket.WebSocket[] = [];
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
+    this.users.push(ws);
+
     ws.onmessage = (e) => {
       const { data } = e;
-
-      ws.send(data);
+      this.users.forEach((w) => w.send(data));
     };
   }
 
