@@ -4,6 +4,7 @@ namespace NodeJS {
     DB_NAME: string,
     DB_USER: string,
     DB_PASSWORD: string,
-    HOST: string
+    HOST: string,
+    WS_SERVER_PORT: number
   }
 }
