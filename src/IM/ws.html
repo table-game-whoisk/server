@@ -7,12 +7,46 @@
     <title>Document</title>
   </head>
   <body>
-    <button id="connect">connect</button>
+    <div>
+      <input type="text" id="user" />
+      <button id="connect">connect</button>
+      <button id="close">close</button>
+    </div>
+    <ul id="messages" style="height: 300px; overflow: auto"></ul>
+    <textarea name="" id="text" cols="30" rows="10"></textarea>
+    <button id="send">send</button>
     <script>
+      let ws = null;
       document.getElementById("connect").onclick = () => {
-        let ws = new WebSocket("ws://127.0.0.1:5000");
+        const userid = document.getElementById("user").value || Math.floor(Math.random() * 10);
+        ws = new WebSocket(`ws://localhost:5001?user=${userid}`);
+        ws.onopen = () => {
+          console.log("Connection open ...");
+        };
+        ws.onclose = () => {
+          console.log("Connection close ...");
+        };
+        ws.onerror = (e) => {
+          console.log(e);
+        };
+        const ulElement = document.getElementById("messages");
 
-      
+        ws.onmessage = ({ data }) => {
+          const li = document.createElement("li");
+          li.innerHTML = data;
+          ulElement.appendChild(li);
+        };
+        document.getElementById("close").onclick = () => {
+          ws.close();
+        };
+      };
+
+      document.getElementById("send").onclick = () => {
+        if (ws) {
+          const text = document.getElementById("text").value;
+          text && ws.send(text);
+          document.getElementById("text").value = "";
+        }
       };
     </script>
   </body>
