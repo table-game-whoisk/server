@@ -4,7 +4,7 @@ import { startup } from "./startup";
 import { router } from "./api";
 import { globalError, response } from "./middleware";
 import bodyParser from "body-parser"
-import { createWebsocketServer } from "./IM";
+import { createWebsocketServer } from "./IM/ws";
 
 const app = express();
 const port = process.env.SERVER_PORT;

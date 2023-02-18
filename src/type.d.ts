@@ -3,7 +3,6 @@ type RoomId = string;
 
 declare interface UserProp {
   id: string;
-  nickname?: string;
 }
 
 declare interface RoomMember extends Map<UserId, WebSocket> {}

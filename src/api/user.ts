@@ -11,14 +11,15 @@ class User {
     const data = await UserModel.findAll();
     res.json({ data });
   };
-  createUser: RequestHandler = async (req, res, next) => {
+  createUser: RequestHandler = async (_, res, next) => {
     try {
-
-      const nickname = (req.body as { nickname?: string }).nickname || ""
-      const id = v1()
+      let id = ""
+      id = v1()
+      while (UserCache.existUser(id)) {
+        id = v1()
+      }
       const user = await UserModel.create({
         id,
-        nickname,
       });
       UserCache.list.set(id, user);
       res.json({ data: user.toJSON() });

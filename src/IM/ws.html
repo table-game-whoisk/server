@@ -9,6 +9,7 @@
   <body>
     <div>
       <input type="text" id="user" />
+      <input type="text" id="roomid" />
       <button id="connect">connect</button>
       <button id="close">close</button>
     </div>
@@ -19,7 +20,8 @@
       let ws = null;
       document.getElementById("connect").onclick = () => {
         const userid = document.getElementById("user").value || Math.floor(Math.random() * 10);
-        ws = new WebSocket(`ws://192.168.3.62:5001?user=${userid}`);
+        const roomid = document.getElementById("roomid").value || Math.floor(Math.random() * 100);
+        ws = new WebSocket(`ws://192.168.3.8:5000?user=${userid}&roomid=${roomid}`);
         ws.onopen = () => {
           console.log("Connection open ...");
         };

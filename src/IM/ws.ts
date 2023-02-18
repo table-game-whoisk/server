@@ -6,18 +6,23 @@ class IM {
   room: Room = new Map();
   users: WebSocket.WebSocket[] = [];
 
-  connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
-    this.users.push(ws);
+  parseUrl(ws: WebSocket.WebSocket) {
+  }
 
+  connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
+
+    const params = this.parseUrl(ws)
+    console.log(ws.url)
+    this.users.push(ws);
     ws.onmessage = (e) => {
       const { data } = e;
       this.users.forEach((w) => w.send(data));
     };
   }
-
   onMessage(message: WebSocketData) {
     const { type, content } = message;
     this.send(content);
+
   }
   send(content: string) {
     console.log(content);
@@ -40,6 +45,6 @@ export const createWebsocketServer = () => {
       logger.error("error", e);
     });
 
-    ws.on("close", () => {});
+    ws.on("close", () => { });
   });
 };
