@@ -1,7 +1,7 @@
 import { Sequelize, DataTypes, Model } from "sequelize";
 import { sequelize } from ".";
 
-export class UserModel extends Model<UserProp> { }
+export class UserModel extends Model<UserProp> {}
 
 export function initUser() {
   return UserModel.init(
@@ -11,6 +11,9 @@ export function initUser() {
         unique: true,
         allowNull: false,
         primaryKey: true
+      },
+      nickname: {
+        type: DataTypes.STRING
       }
     },
     {

@@ -1,6 +1,6 @@
 import express, { RequestHandler } from "express";
 import { UserModel } from "../db/User.model";
-import { v1 } from "uuid"
+import { v1 } from "uuid";
 import { logger } from "../utils/logger";
 import { UserCache } from "../cache/user";
 
@@ -11,35 +11,39 @@ class User {
     const data = await UserModel.findAll();
     res.json({ data });
   };
-  createUser: RequestHandler = async (_, res, next) => {
+  createUser: RequestHandler = async (req, res, next) => {
     try {
-      let id = ""
-      id = v1()
+      let id = "";
+      const { nickname } = req.body;
+      id = v1();
       while (UserCache.existUser(id)) {
-        id = v1()
+        id = v1();
       }
       const user = await UserModel.create({
         id,
+        nickname
       });
       UserCache.list.set(id, user);
       res.json({ data: user.toJSON() });
-    } catch (e) { next(e) }
-
+    } catch (e) {
+      next(e);
+    }
   };
   userInfo: RequestHandler = async (req, res, next) => {
     try {
-      const { id } = req.params
-      const user = UserCache.findUser(id)
-      user ? res.json({ data: user.toJSON() }) : res.json({ data: null })
-    } catch (e) { next(e) }
-  }
+      const { id } = req.params;
+      const user = UserCache.findUser(id);
+      user ? res.json({ data: user.toJSON() }) : res.json({ data: null });
+    } catch (e) {
+      next(e);
+    }
+  };
 }
 
 export const user = new User();
 
 router.get("/list", user.getUsersList);
 router.post("/create", user.createUser);
-router.get("/info", user.userInfo)
+router.get("/info", user.userInfo);
 
 export default router;
-

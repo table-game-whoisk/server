@@ -21,7 +21,7 @@
       document.getElementById("connect").onclick = () => {
         const userid = document.getElementById("user").value || Math.floor(Math.random() * 10);
         const roomid = document.getElementById("roomid").value || Math.floor(Math.random() * 100);
-        ws = new WebSocket(`ws://192.168.3.8:5000?user=${userid}&roomid=${roomid}`);
+        ws = new WebSocket(`ws://192.168.3.62:5001?userId=${userid}&roomId=${roomid}`);
         ws.onopen = () => {
           console.log("Connection open ...");
         };
