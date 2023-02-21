@@ -22,7 +22,11 @@ export class Room {
     }
   }
   messageParse(data: WebSocket.RawData) {
+
     let message = JSON.parse(data.toString());
-    this.players.forEach(({ ws }) => ws.send(message));
+    this.send(message)
+  }
+  send(message: MessageData) {
+    console.log(message)
   }
 }
