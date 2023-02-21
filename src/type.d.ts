@@ -13,6 +13,6 @@ declare interface Player {
 
 
 declare interface MessageData {
-  type: "message",
+  type: "info" | "message" | "enter" | "exit",
   content: any
 }

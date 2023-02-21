@@ -1,30 +1,29 @@
 import { IncomingMessage } from "node:http";
 import WebSocket from "ws";
 import { logger } from "../utils/logger";
-import { Room } from "./room";
+import { Player } from "./player";
 
 class IM {
-  rooms = new Map<roomId, Room>();
+  players = new Map<UserId, Player>();
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
-    const { roomId, userId } = this.parseParam(req);
-    if (!roomId || !userId) {
+    const { userId } = this.parseParam(req);
+    if (!userId) {
       return logger.error("error connected method");
     }
-    let room = this.rooms.get(roomId);
-    if (!room) {
-      room = new Room(roomId);
-      this.rooms.set(roomId, room);
+    let player = this.players.get(userId);
+    if (!player) {
+      player = new Player(userId, ws)
+      this.players.set(userId, player)
     }
-    room.join(userId, ws);
-    ws.on("message", (data) => room!.messageParse(data));
+    ws.on("message", (data) =>player?.messageParse(data));
+    logger.info(`user ${userId} connected success`)
   }
 
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
-    const roomId = params.get("roomId");
     const userId = params.get("userId");
-    return { roomId, userId };
+    return { userId };
   }
 }
 export const im = new IM();
