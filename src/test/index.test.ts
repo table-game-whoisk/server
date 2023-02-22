@@ -1,9 +1,15 @@
-import axios from "axios"
 
-const instanse = axios.create({ baseURL: "http://localhost:4000/" })
+import request from "supertest"
+import app from ".."
+import { startup } from "../startup"
 
+describe("main", () => {
+  beforeEach(async () => {
+    await startup()
+  })
 
-it("hello world test", async () => {
-  const data = await axios.get("http://localhost:4000/")
-  expect(data.data).toBe('Hello World!');
+  it("test", async () => {
+    const res = await request(app).post('/user/create').send({ nickname: "111" })
+    expect(res.status).toBe(200)
+  })
 })

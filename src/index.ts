@@ -9,6 +9,10 @@ import { createWebsocketServer } from "./IM/ws";
 const app = express();
 const port = process.env.SERVER_PORT;
 
+app.get('/hello', function (req, res) {
+  res.status(200).json({ name: 'hello' });
+});
+
 app.listen(port, () => {
   startup().then(async (failed) => {
     if (failed) return;
@@ -21,4 +25,6 @@ app.listen(port, () => {
   console.log(`server start on port ${port}`);
 }).on("close", () => {
   console.log("server is stop now");
-});
+})
+
+export default app

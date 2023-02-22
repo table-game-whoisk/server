@@ -72,7 +72,9 @@
   "ts-node": {
     "files": true
   },
-  "ts-node-dev": {
-    "files": true
-  }
+  "exclude": [
+    "cypress",
+    "./cypress.config.ts"
+  ]
 }
+ 

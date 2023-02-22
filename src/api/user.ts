@@ -7,10 +7,6 @@ import { UserCache } from "../cache/user";
 const router = express.Router();
 
 class User {
-  getUsersList: RequestHandler = async (req, res) => {
-    const data = await UserModel.findAll();
-    res.json({ data });
-  };
   createUser: RequestHandler = async (req, res, next) => {
     try {
       let id = "";
@@ -42,7 +38,6 @@ class User {
 
 export const user = new User();
 
-router.get("/list", user.getUsersList);
 router.post("/create", user.createUser);
 router.get("/info", user.userInfo);
 
