@@ -5,21 +5,31 @@ import { Player } from "./player";
 
 class IM {
   players = new Map<UserId, Player>();
+  timer: NodeJS.Timer | null = null
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
     const { userId } = this.parseParam(req);
     if (!userId) {
       return logger.error("error connected method");
     }
-    let player = this.players.get(userId);
-    if (!player) {
-      player = new Player(userId, ws)
-      this.players.set(userId, player)
+    this.timer = setInterval(() => {
+      ws.ping()
+    }, 1000)
+    ws.on("pong", (data) => {
+      ws.send("heart check")
+    })
+    ws.on("close", () => {
+      this.timer && clearInterval(this.timer)
+      this.timer = null
+    })
+    if (!this.players.has(userId)) {
+      this.players.set(userId, new Player(userId, ws))
     }
-    ws.on("message", (data) =>player?.messageParse(data));
     logger.info(`user ${userId} connected success`)
   }
+  onClose() {
 
+  }
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
     const userId = params.get("userId");

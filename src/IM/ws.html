@@ -34,7 +34,9 @@
         };
         const ulElement = document.getElementById("messages");
 
-        ws.onmessage = ({ data }) => {
+        ws.onmessage = (e) => {
+          console.log(e)
+          const {data} =e
           const li = document.createElement("li");
           li.innerHTML = data;
           ulElement.appendChild(li);
@@ -47,14 +49,14 @@
       document.getElementById("send").onclick = () => {
         if (ws) {
           const text = document.getElementById("text").value;
-          text && ws.send(JSON.stringify({type:"message",content:text}));
+          text && ws.send(JSON.stringify({ type: "message", content: text }));
           document.getElementById("text").value = "";
         }
       };
       document.getElementById("sendCard").onclick = () => {
         if (ws) {
           const text = document.getElementById("text").value;
-          text && ws.send(JSON.stringify( {type:"card",conetent:{atack:1}}));
+          text && ws.send(JSON.stringify({ type: "card", conetent: { atack: 1 } }));
           document.getElementById("text").value = "";
         }
       };

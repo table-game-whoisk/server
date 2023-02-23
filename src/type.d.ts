@@ -20,3 +20,9 @@ declare interface Task {
   date: Date;
   action: () => void;
 }
+
+declare interface Listener {
+  userId: string,
+  socket: WebSocket.websocket,
+  message: () => Promise<MessageData>
+}

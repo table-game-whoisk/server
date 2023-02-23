@@ -1,6 +1,6 @@
 import { logger } from "./logger"
 
-class TimerTask {
+export class TimerTask {
   static queue = new Set<Task>()
   static timer: NodeJS.Timeout | null = null;
 
@@ -26,8 +26,9 @@ class TimerTask {
     logger.info(`there are currently ${TimerTask.queue.size} scheduled tasks`);
   }
 
+
   static stop() {
-     clearInterval(TimerTask.timer!);
-     TimerTask.timer = null;
+    clearInterval(TimerTask.timer!);
+    TimerTask.timer = null;
   }
 }

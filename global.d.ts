@@ -6,5 +6,6 @@ namespace NodeJS {
     DB_PASSWORD: string,
     HOST: string,
     WS_SERVER_PORT: number
+    WS_URL:string
   }
 }

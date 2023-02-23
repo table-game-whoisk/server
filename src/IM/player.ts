@@ -4,17 +4,18 @@ import { Room } from "./room";
 
 export class Player {
   userId: string;
-  roomId: string | undefined;
+  roomId: string | null = null;
   ws: WebSocket.WebSocket;
-  room: Room | undefined
+  room: Room | undefined;
+
   constructor(userId: string, ws: WebSocket.WebSocket) {
     this.userId = userId
+    ws.on("message", (data) => this.messageParse(data))
     this.ws = ws
   }
-  messageParse(data: WebSocket.RawData) {
+  private messageParse(data: WebSocket.RawData) {
     const message = JSON.parse(data.toString()) as MessageData
     const { type, content } = message
-    console.log(message)
     switch (type) {
       case "info":
         this.getPlayer()
@@ -29,16 +30,18 @@ export class Player {
         break;
     }
   }
+  private send(type: MessageData["type"], content: MessageData["content"]) {
+    this.ws.send(JSON.stringify({ type, content }))
+  }
   getPlayer() {
     let roomId = this.roomId
-    console.log(roomId)
-    this.ws.send(JSON.stringify({ type: "info", roomId }))
+    this.send("info", { roomId })
   }
   enterRoom(roomId: string) {
     this.roomId = roomId
   }
   exitRoom(roomId: string) {
-    this.roomId = undefined
+    this.roomId = null
+    this.ws.close()
   }
-
 }
