@@ -1,15 +1,24 @@
 
 import request from "supertest"
-import app from ".."
-import { startup } from "../startup"
+import app, { server } from ".."
+import { sequelize } from "../db"
+import { appStatus } from "../utils/app.status"
+
+
+beforeAll(async () => {
+  await appStatus.waitRun()
+})
+
+afterAll(async () => {
+  await sequelize.close()
+  await server.close()
+})
 
 describe("main", () => {
-  beforeEach(async () => {
-    await startup()
-  })
-
-  it("test", async () => {
+  it("create user", async () => {
     const res = await request(app).post('/user/create').send({ nickname: "111" })
     expect(res.status).toBe(200)
+    expect(res.body.data).toHaveProperty("nickname")
   })
+
 })

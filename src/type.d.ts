@@ -11,8 +11,12 @@ declare interface Player {
   ws: WebSocket.websocket;
 }
 
-
 declare interface MessageData {
   type: "info" | "message" | "enter" | "exit",
   content: any
+}
+
+declare interface Task {
+  date: Date;
+  action: () => void;
 }

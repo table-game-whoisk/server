@@ -1,7 +1,7 @@
-import { Sequelize, DataTypes, Model } from "sequelize";
-import { sequelize } from ".";
+import { DataTypes, Model } from "sequelize";
+import { force, sequelize } from ".";
 
-export class UserModel extends Model<UserProp> {}
+export class UserModel extends Model<UserProp> { }
 
 export function initUser() {
   return UserModel.init(
@@ -22,5 +22,5 @@ export function initUser() {
       tableName: "user",
       timestamps: false
     }
-  ).sync();
+  ).sync(force);
 }
