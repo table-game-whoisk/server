@@ -12,23 +12,13 @@ class IM {
     if (!userId) {
       return logger.error("error connected method");
     }
-    this.timer = setInterval(() => {
-      ws.ping()
-    }, 1000)
-    ws.on("pong", (data) => {
-      ws.send("heart check")
-    })
-    ws.on("close", () => {
-      this.timer && clearInterval(this.timer)
-      this.timer = null
-    })
-    if (!this.players.has(userId)) {
-      this.players.set(userId, new Player(userId, ws))
+    let player = this.players.get(userId)
+    if (!player) {
+      player = new Player(userId)
+      this.players.set(userId, player)
     }
+    player.startListen(ws)
     logger.info(`user ${userId} connected success`)
-  }
-  onClose() {
-
   }
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));

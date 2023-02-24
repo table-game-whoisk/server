@@ -5,43 +5,50 @@ import { Room } from "./room";
 export class Player {
   userId: string;
   roomId: string | null = null;
-  ws: WebSocket.WebSocket;
-  room: Room | undefined;
+  room: Room | null = null;
+  ws: WebSocket.WebSocket | null = null;
 
-  constructor(userId: string, ws: WebSocket.WebSocket) {
+  constructor(userId: string) {
     this.userId = userId
-    ws.on("message", (data) => this.messageParse(data))
+  }
+
+  static parseMessage(data: WebSocket.RawData) {
+    const message = JSON.parse(data.toString()) as MessageData
+    return message
+  }
+
+  startListen(ws: WebSocket.WebSocket) {
+    ws.on("message", (data) => { this.onMessage.call(this, data) })
+    ws.on("close", (code, reason) => this.onClose.call(this))
+    ws.on("error", (err) => this.onError.call(this, err))
     this.ws = ws
   }
-  private messageParse(data: WebSocket.RawData) {
-    const message = JSON.parse(data.toString()) as MessageData
-    const { type, content } = message
+  onMessage(data: WebSocket.RawData) {
+    const { type, content } = Player.parseMessage(data)
     switch (type) {
       case "info":
-        this.getPlayer()
         break;
       case "enter":
-        this.enterRoom("111")
-        break;
-      case "exit":
-        this.exitRoom("erere")
-        break;
-      default:
+        this.enterRoom(content.roomId);
         break;
     }
   }
-  private send(type: MessageData["type"], content: MessageData["content"]) {
-    this.ws.send(JSON.stringify({ type, content }))
+  
+  onClose() {
+    this.ws = null
   }
-  getPlayer() {
-    let roomId = this.roomId
-    this.send("info", { roomId })
+  onError(err: Error) { }
+  send(data: MessageData) {
+    this.ws?.send(JSON.stringify(data))
   }
   enterRoom(roomId: string) {
-    this.roomId = roomId
+
   }
-  exitRoom(roomId: string) {
-    this.roomId = null
-    this.ws.close()
+  playerInfo() {
+    const roomId = this.roomId
+    return {
+      roomId,
+      room: null,
+    }
   }
 }

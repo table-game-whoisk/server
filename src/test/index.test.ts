@@ -63,4 +63,13 @@ describe("main", () => {
     expect(data?.content).toHaveProperty("roomId")
   })
 
+  it("create room", async () => { })
+
+  it("reconnect room", async () => { })
+
+  it("join room", async () => { })
+
+  it("ready test", async () => { })
+
+  it("game start", async () => { })
 })
