@@ -79,4 +79,12 @@ describe("main", () => {
     expect(res?.content).not.toBe(null)
   })
 
+  it("mutil player join", async () => { })
+
+  it("player ready", async () => { })
+
+  it("select character", async () => { })
+
+  it("assign role", async () => { })
+  
 })
