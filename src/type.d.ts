@@ -7,13 +7,14 @@ declare interface UserProp {
 type playerId = string;
 type roomId = string;
 
-declare interface Player {
-  ws: WebSocket.websocket;
-}
-
 declare interface MessageData {
-  type: "info" | "message" | "enter" | "exit",
-  content: any
+  type: "info" | "message" | "enter" | "exit" | "error",
+  from?: UserId,
+  timestamp?: number,
+  to?: UserId | UserId[],
+  msg?: string,
+  roomId?: roomId
+  content?: any
 }
 
 declare interface Task {
@@ -24,5 +25,6 @@ declare interface Task {
 declare interface Listener {
   userId: string,
   socket: WebSocket.websocket,
-  message: () => Promise<MessageData>
+  message: () => Promise<MessageData>,
+  send: (message: MessageData) => void
 }

@@ -1,20 +1,9 @@
 
 import WebSocket from "ws"
-import { TimerTask } from "../utils/timerTask"
 
 export class ScoketClient {
   static listener = new Map<UserId, Listener>()
 
-  private heartCheck() {
-    TimerTask.register({
-      date: new Date(),
-      action: () => {
-        ScoketClient.listener.forEach((item) => {
-          item.socket.send(JSON.stringify({ type: "check" }))
-        })
-      }
-    })
-  }
 
   static connect(userId: string) {
     return new Promise((resove, reject) => {
@@ -32,7 +21,10 @@ export class ScoketClient {
           })
         })
       }
-      ScoketClient.listener.set(userId, { userId, socket, message })
+      const send = (message: MessageData) => {
+        socket.send(JSON.stringify(message))
+      }
+      ScoketClient.listener.set(userId, { userId, socket, send, message })
     })
 
   }

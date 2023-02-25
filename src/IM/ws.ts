@@ -17,8 +17,20 @@ class IM {
       player = new Player(userId)
       this.players.set(userId, player)
     }
-    player.startListen(ws)
+    ws.on("message", (data) => {
+      const res = IM.parseMessage(data, ws)
+      res && player?.onMessage.call(player,res)
+    })
+    player.startListen.call(player,ws)
     logger.info(`user ${userId} connected success`)
+  }
+  static parseMessage(data: WebSocket.RawData, ws: WebSocket.WebSocket) {
+    const res = data.toString()
+    if (res === "ping") {
+      ws.send("pong")
+      return null
+    }
+    return JSON.parse(res) as MessageData
   }
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
@@ -38,7 +50,6 @@ export const createWebsocketServer = () => {
       ws.on("connection", im.connection.bind(im));
       resolve(true);
     });
-
     ws.on("error", (e) => {
       logger.error("error", e);
     });

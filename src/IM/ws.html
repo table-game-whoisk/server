@@ -11,7 +11,9 @@
       <input type="text" id="user" />
       <input type="text" id="roomid" />
       <button id="connect">connect</button>
+      <button id="info">info</button>
       <button id="close">close</button>
+      <button id="ping">ping</button>
     </div>
     <ul id="messages" style="height: 300px; overflow: auto"></ul>
     <textarea name="" id="text" cols="30" rows="10"></textarea>
@@ -19,24 +21,39 @@
     <button id="send">sendCard</button>
     <script>
       let ws = null;
+      let timer = null;
       document.getElementById("connect").onclick = () => {
         const userid = document.getElementById("user").value || Math.floor(Math.random() * 10);
         const roomid = document.getElementById("roomid").value || Math.floor(Math.random() * 100);
+
         ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userid}&roomId=${roomid}`);
+        const reconnect = () => {
+          ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userid}&roomId=${roomid}`);
+          ws.onopen = () => {
+            console.log("Connection open ...");
+            heartcheck();
+          };
+        };
         ws.onopen = () => {
           console.log("Connection open ...");
+          heartcheck();
         };
         ws.onclose = () => {
           console.log("Connection close ...");
+          clearInterval(timer);
+          timer = null;
+          reconnect();
         };
         ws.onerror = (e) => {
           console.log(e);
         };
         const ulElement = document.getElementById("messages");
-
-        ws.onmessage = (e) => {
-          console.log(e)
-          const {data} =e
+        ws.onmessage = ({ data }) => {
+          if (data === "pong") {
+            console.log("pong");
+            return;
+          }
+          console.log(data)
           const li = document.createElement("li");
           li.innerHTML = data;
           ulElement.appendChild(li);
@@ -45,7 +62,11 @@
           ws.close();
         };
       };
-
+      function heartcheck() {
+        timer = setInterval(() => {
+          ws.send("ping");
+        }, 1000);
+      }
       document.getElementById("send").onclick = () => {
         if (ws) {
           const text = document.getElementById("text").value;
@@ -53,12 +74,11 @@
           document.getElementById("text").value = "";
         }
       };
-      document.getElementById("sendCard").onclick = () => {
-        if (ws) {
-          const text = document.getElementById("text").value;
-          text && ws.send(JSON.stringify({ type: "card", conetent: { atack: 1 } }));
-          document.getElementById("text").value = "";
-        }
+      document.getElementById("ping").onclick = () => {
+        ws.send("ping");
+      };
+      document.getElementById("info").onclick = () => {
+        ws.send(JSON.stringify({ type: "info" }));
       };
     </script>
   </body>
