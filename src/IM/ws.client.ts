@@ -11,8 +11,12 @@ export class ScoketClient {
       socket.on("open", () => {
         resove(true)
       })
+      let messages: MessageData[] = []
       socket.on("close", () => { })
       socket.on("error", (error) => {
+      })
+      socket.on("message", (data) => {
+        messages.push(JSON.parse(data.toString()))
       })
       const message = () => {
         return new Promise<MessageData>((resolve) => {
@@ -21,10 +25,15 @@ export class ScoketClient {
           })
         })
       }
+      const getMessages = (type?: MessageData["type"]) => {
+        return new Promise<MessageData[]>((resolve) => {
+          resolve(messages.filter((item) => type ? item.type === type : true))
+        })
+      }
       const send = (message: MessageData) => {
         socket.send(JSON.stringify(message))
       }
-      ScoketClient.listener.set(userId, { userId, socket, send, message })
+      ScoketClient.listener.set(userId, { userId, socket, send, message, getMessages })
     })
 
   }

@@ -5,7 +5,7 @@ import { Player } from "./player";
 export class Room {
   members = new Set<Player>()
   owner: UserId | null = null
-  status: "online" | "ready" | "playing" = "online"
+  status: "open" | "playing" = "open"
   static rooms = new Map<roomId, Room>()
   static findRoom(roomId: string) {
     return Room.rooms.get(roomId)

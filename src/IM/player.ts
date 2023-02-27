@@ -8,14 +8,14 @@ export class Player {
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
   timer: NodeJS.Timer | null = null;
-  isOffline: boolean = true
+  status: "offline" | "online" | "ready" | "playing" = "online"
 
   constructor(userId: string) {
     this.userId = userId
   }
 
   startListen(ws: WebSocket.WebSocket) {
-    this.isOffline = false
+    this.status = "online"
     this.timer = setInterval(() => {
       ws.ping()
     }, 1000)
@@ -25,7 +25,7 @@ export class Player {
     this.ws = ws
   }
   private send(data: MessageData) {
-    this.ws?.send(JSON.stringify(data))
+    this.ws?.send(JSON.stringify({ ...data, from: this.userId, timestamp: Date.now(), }))
   }
   onMessage(data: MessageData) {
     const { type, content, roomId, to, from } = data
@@ -36,15 +36,45 @@ export class Player {
       case "enter":
         Room.enterRoom(roomId, this)
         break;
+      case "start":
+        this.sendStart();
+        break;
       case "message":
         this.send(data);
         break;
     }
   }
   senInfo() {
-    const { room, roomId, userId } = this
-    const members = [...room?.members || []].map((p) => p.userId)
-    this.send({ type: "info", from: userId, timestamp: Date.now(), content: { members, roomId } })
+    const { room, roomId, userId, status } = this
+    this.send({
+      type: "info", content: {
+        room: {
+          ...room,
+          roomId,
+          members: [...room?.members || []].map((p) => p.userId)
+        },
+        player: {
+          status,
+          id: userId,
+        }
+      }
+    })
+  }
+  sendStart() {
+    const { room } = this
+    if (!room) {
+      this.sendError("当前还未加入任何房间")
+      return
+    }
+    this.status = "ready"
+    const isAllready = [...room?.members || []].every((item) => item.status === "ready")
+    room.status = isAllready ? "playing" : "open"
+    room.members.forEach((item) => {
+      if (item.room?.owner === item.userId && !isAllready) {
+        item.sendError("还有玩家未准备就绪")
+      }
+      item.senInfo()
+    })
   }
   sendError(msg: string) {
     this.send({ type: "error", msg })
@@ -53,7 +83,7 @@ export class Player {
     this.ws = null
     this.timer && clearInterval(this.timer)
     this.timer = null
-    this.isOffline = true
+    this.status = "offline"
   }
   onError(err: Error) { }
 }

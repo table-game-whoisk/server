@@ -8,7 +8,7 @@ type playerId = string;
 type roomId = string;
 
 declare interface MessageData {
-  type: "info" | "message" | "enter" | "exit" | "error",
+  type: "info" | "message" | "enter" | "start" | "exit" | "error",
   from?: UserId,
   timestamp?: number,
   to?: UserId | UserId[],
@@ -26,5 +26,6 @@ declare interface Listener {
   userId: string,
   socket: WebSocket.websocket,
   message: () => Promise<MessageData>,
+  getMessages: (type?: MessageData["type"]) => Promise<MessageData[]>,
   send: (message: MessageData) => void
 }
