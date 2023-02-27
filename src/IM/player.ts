@@ -40,7 +40,7 @@ export class Player {
         this.sendStart();
         break;
       case "message":
-        this.send(data);
+        this.sendMessage(data);
         break;
     }
   }
@@ -75,6 +75,11 @@ export class Player {
       }
       item.senInfo()
     })
+  }
+  sendMessage(data: MessageData) {
+    this.room?.members.forEach((item) =>
+      item.send(data)
+    )
   }
   sendError(msg: string) {
     this.send({ type: "error", msg })
