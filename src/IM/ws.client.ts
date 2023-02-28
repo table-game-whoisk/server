@@ -2,7 +2,7 @@
 import WebSocket from "ws"
 
 export class ScoketClient {
-  static listener = new Map<UserId, Listener>()
+  static listener = new Map<userId, Test.Listener>()
 
 
   static connect(userId: string) {

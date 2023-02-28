@@ -4,7 +4,7 @@ import { Player } from "./player";
 
 export class Room {
   members = new Set<Player>()
-  owner: UserId | null = null
+  owner: userId | null = null
   status: "open" | "playing" = "open"
   static rooms = new Map<roomId, Room>()
   static findRoom(roomId: string) {
@@ -28,7 +28,7 @@ export class Room {
     } else {
       player.sendError("房间已满")
     }
-    player.senInfo.call(player)
+    player.oninfo.call(player)
   }
   static destroyRoom(roomId: string) {
     Room.rooms.delete(roomId)

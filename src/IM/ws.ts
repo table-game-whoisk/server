@@ -4,33 +4,33 @@ import { logger } from "../utils/logger";
 import { Player } from "./player";
 
 class IM {
-  players = new Map<UserId, Player>();
-  timer: NodeJS.Timer | null = null
+  players = new Map<userId, Player>();
+  timer: NodeJS.Timer | null = null;
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
     const { userId } = this.parseParam(req);
     if (!userId) {
       return logger.error("error connected method");
     }
-    let player = this.players.get(userId)
+    let player = this.players.get(userId);
     if (!player) {
-      player = new Player(userId)
-      this.players.set(userId, player)
+      player = new Player(userId);
+      this.players.set(userId, player);
     }
     ws.on("message", (data) => {
-      const res = IM.parseMessage(data, ws)
-      res && player?.onMessage.call(player,res)
-    })
-    player.startListen.call(player,ws)
-    logger.info(`user ${userId} connected success`)
+      const res = IM.parseMessage(data, ws);
+      res && Player.dispatchMessage(res, player);
+    });
+    player.startListen.call(player, ws);
+    logger.info(`user ${userId} connected success`);
   }
   static parseMessage(data: WebSocket.RawData, ws: WebSocket.WebSocket) {
-    const res = data.toString()
+    const res = data.toString();
     if (res === "ping") {
-      ws.send("pong")
-      return null
+      ws.send("pong");
+      return null;
     }
-    return JSON.parse(res) as MessageData
+    return JSON.parse(res) as MessageData;
   }
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
