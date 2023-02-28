@@ -1,11 +1,18 @@
 type userId = string;
 type roomId = string;
 
+// DB
 declare interface UserProp {
   id: string;
   nickname?: string;
 }
+declare interface MaterialProp {
+  id: string;
+  type: string;
+  content: Game.Character | Game.Card | Game.Clue;
+}
 
+// ws
 declare interface MessageData {
   type: "info" | "message" | "enter" | "start" | "character" | "exit" | "error";
   from?: userId;
