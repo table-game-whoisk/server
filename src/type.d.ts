@@ -22,30 +22,59 @@ declare interface Task {
 }
 
 namespace Game {
-  type actionObject = "character" | "card";
+  // 公用类型
+  type deck = "center" | "hands" | "equip" | "bulletin";
 
-  declare interface Character {
+  // 角色类
+  interface Character {
     id: string;
     name: string;
-    attribute: CharacterAtr;
+    attribiute: Attribute;
     skill: {
       name: string;
       describe: string;
-      effect: Effect;
+      effect: skillEffect;
     };
   }
 
-  declare interface CharacterAtr {
+  interface Attribute {
     health: number;
     attack: number;
     defense: number;
-    evade: number;
+    dodge: number;
   }
 
-  declare interface Effect {
-    type: actionObject;
-    characterEffect?: {};
-    cardEffect?: {};
+  interface skillEffect {
+    //  对角色属性作用，对卡牌作用，对角色动作，对游戏步骤作用
+    to: string | string[];
+    duration: number; //回合数
+    character?: Attribute;
+    action?: "pickUp" | "drop" | "use" | "mute"; // 抓牌，弃牌，出牌，禁止
+    card?: {
+      drop: number | null;
+      pickUp: number | null;
+      where: deck | string | string[] | null; // 中央牌组 ,手牌，装备区,线索区,其他玩家
+      type: cardType | null; //卡牌类型
+    };
+  }
+
+  // 卡牌类
+  type cardType = "trap" | "action" | "cule";
+
+  interface Card {
+    id: string;
+    name: string;
+    type: cardType;
+    describe: string;
+    effect?: skillEffect;
+  }
+
+  // 线索类
+  interface Clue {
+    id: string;
+    key: string; // 谜底
+    point: string[]; // 关联id 父线索，子线索
+    riddle: string; // 谜面
   }
 }
 
