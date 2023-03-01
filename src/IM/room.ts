@@ -16,6 +16,7 @@ export class Room {
       return
     }
     let room = Room.findRoom(roomId)
+    
     if (!room) {
       room = new Room()
       room.owner = player.userId

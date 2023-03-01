@@ -6,10 +6,32 @@ declare interface UserProp {
   id: string;
   nickname?: string;
 }
-declare interface MaterialProp {
+type materialType = "character" | "card" | "clue";
+
+declare interface CharacterProp {
   id: string;
+  name: string;
   type: string;
-  content: Game.Character | Game.Card | Game.Clue;
+  health: number;
+  attack: number;
+  defense: number;
+  dodge: number;
+  skillId: string;
+}
+
+declare interface SkillProp {
+  id: string;
+  name: string;
+  describe: string;
+  action?: "pickUp" | "drop" | "use" | "mute" | "attribute";
+  health?: number;
+  attack?: number;
+  defense?: number;
+  dodge?: number;
+  drop?: number;
+  pickUp?: number;
+  where?: string; // 作用对象 牌组处，玩家处
+  cardType?: string; //卡牌类型
 }
 
 // ws
@@ -41,7 +63,7 @@ namespace Game {
       name: string;
       describe: string;
       effect: skillEffect;
-    };
+    } | null;
   }
 
   interface Attribute {
