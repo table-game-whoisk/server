@@ -1,6 +1,7 @@
 import { sequelize, initModel } from "./db";
 import { logger } from "./utils/logger";
-import { UserCache } from "./cache/user"
+import { UserCache } from "./cache/user";
+import { MaterialCache } from "./cache/materail";
 
 export const startup = async () => {
   try {
@@ -11,5 +12,6 @@ export const startup = async () => {
     return logger.error("Unable to connect to the database:", error);
   }
 
-  await UserCache.initCache()
+  await UserCache.initCache();
+  await MaterialCache.initCache();
 };

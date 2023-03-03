@@ -7,6 +7,7 @@ declare interface UserProp {
   nickname?: string;
 }
 type materialType = "character" | "card" | "clue";
+type cardType = "trop" | "prop" | "action" | "clue";
 
 declare interface CharacterProp {
   id: string;
@@ -16,7 +17,8 @@ declare interface CharacterProp {
   attack: number;
   defense: number;
   dodge: number;
-  skillId: string;
+  SkillId?: string;
+  Skill?: SkillProp | null;
 }
 
 declare interface SkillProp {
@@ -32,6 +34,15 @@ declare interface SkillProp {
   pickUp?: number;
   where?: string; // 作用对象 牌组处，玩家处
   cardType?: string; //卡牌类型
+}
+
+declare interface CardProp {
+  id: string;
+  type: cardType;
+  name: string;
+  describe: string;
+  SkillId?: string;
+  Skill?: SkillProp | null;
 }
 
 // ws

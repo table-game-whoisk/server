@@ -1,6 +1,7 @@
 import { Sequelize } from "sequelize";
-import { CharacterModel, initCharacter } from "./Character.model";
-import { initSkillModel, SkillModel } from "./Skill.model";
+import { initCardModel } from "./Card.model";
+import { initCharacter } from "./Character.model";
+import { initSkillModel } from "./Skill.model";
 import { initUser } from "./User.model";
 
 export const force = { force: process.env.NODE_ENV === "test" };
@@ -20,4 +21,5 @@ export const initModel = async () => {
   await initUser();
   await initCharacter();
   await initSkillModel();
+  await initCardModel();
 };
