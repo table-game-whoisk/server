@@ -9,8 +9,27 @@ const router = express.Router();
 class Character {
   list: RequestHandler = async (req, res, next) => {
     try {
-      const data = await CharacterModel.findAll({ where: { type: "character" }, include: SkillModel });
+      const data = await CharacterModel.findAll({ include: SkillModel });
       res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  };
+  get: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = req.query as { id: string };
+      const character = await CharacterModel.findOne({ where: { id }, include: SkillModel });
+      res.json({ data: character });
+    } catch (e) {
+      next(e);
+    }
+  };
+  delete: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, SkillId } = req.body as CharacterProp;
+      await CharacterModel.destroy({ where: { id } });
+      await SkillModel.destroy({ where: { id: SkillId } });
+      res.json({ data: null });
     } catch (e) {
       next(e);
     }
@@ -55,6 +74,8 @@ class Character {
 export const character = new Character();
 
 router.get("/list", character.list);
+router.get("/get", character.get);
+router.post("/delete", character.delete);
 router.post("/create", character.create);
 router.post("/update", character.update);
 

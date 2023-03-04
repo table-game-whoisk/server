@@ -1,5 +1,5 @@
 import { DataTypes, Model } from "sequelize";
-import { sequelize } from ".";
+import { force, sequelize } from ".";
 
 export class SkillModel extends Model<SkillProp> {}
 
@@ -19,6 +19,9 @@ export function initSkillModel() {
         type: DataTypes.STRING
       },
       action: {
+        type: DataTypes.STRING
+      },
+      duration: {
         type: DataTypes.STRING
       },
       health: {
@@ -42,9 +45,12 @@ export function initSkillModel() {
       where: {
         type: DataTypes.STRING
       },
+      to: DataTypes.STRING,
       cardType: {
         type: DataTypes.STRING
-      }
+      },
+      effectStep: DataTypes.STRING,
+      effectType: DataTypes.CHAR
     },
     { sequelize, timestamps: false, modelName: "Skill", tableName: "skill" }
   ).sync();

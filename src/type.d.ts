@@ -26,14 +26,21 @@ declare interface SkillProp {
   name: string;
   describe: string;
   action?: "pickUp" | "drop" | "use" | "mute" | "attribute";
+  duration?: number;
+
   health?: number;
   attack?: number;
   defense?: number;
   dodge?: number;
+
+  where?: string; // 作用对象 牌组处，玩家处
+  to?: string;
   drop?: number;
   pickUp?: number;
-  where?: string; // 作用对象 牌组处，玩家处
   cardType?: string; //卡牌类型
+
+  effectStep?: string;
+  effectType?: number;
 }
 
 declare interface CardProp {
