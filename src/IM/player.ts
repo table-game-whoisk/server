@@ -6,38 +6,36 @@ export class Player {
   roomId: string | null = null;
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
-  timer: NodeJS.Timer | null = null;
-  status: "offline" | "online" | "ready" | "playing" = "online";
+  status: playerStatus = "online";
 
   constructor(userId: userId) {
     this.userId = userId;
   }
 
   startListen(ws: WebSocket.WebSocket) {
-    this.status = "online";
-    this.timer = setInterval(() => {
-      ws.ping();
-    }, 1000);
-    ws.on("pong", () => {});
+    this.status = this.room?.status === "playing" ? "playing" : "online";
     ws.on("close", (code, reason) => this.handleClose.call(this));
     ws.on("error", (err) => this.handleError.call(this, err));
     this.ws = ws;
+
+    this.oninfo();
   }
   private send(data: MessageData) {
     this.ws?.send(JSON.stringify({ ...data, from: this.userId, timestamp: Date.now() }));
   }
   private handleClose() {
     this.ws = null;
-    this.timer && clearInterval(this.timer);
-    this.timer = null;
     this.status = "offline";
+    this.onexit();
   }
+  // ws 错误
   private handleError(err: Error) {}
   static dispatchMessage(data: MessageData, player: Player | undefined) {
     if (!player) return;
     const { type } = data;
-    player[`on${type}`].call(player, data);
+    player[`on${type}`]?.call(player, data);
   }
+
   oninfo(data?: MessageData) {
     const { room, roomId, userId, status } = this;
     this.send({
@@ -46,7 +44,7 @@ export class Player {
         room: {
           ...room,
           roomId,
-          members: [...(room?.members || [])].map((p) => p.userId)
+          members: [...(room?.members || [])].map(({ userId, status }) => ({ id: userId, status }))
         },
         player: {
           status,
@@ -67,22 +65,23 @@ export class Player {
     }
     this.status = "ready";
     const isAllready = [...(room?.members || [])].every((item) => item.status === "ready");
-    room.status = isAllready ? "playing" : "open";
+    room.status = isAllready && room?.members.size > 4 ? "ready" : "playing";
     room.members.forEach((item) => {
-      if (item.room?.owner === item.userId && !isAllready) {
-        item.sendError("还有玩家未准备就绪");
-      }
       item.oninfo();
     });
-  }
-  oncharacter(data: MessageData) {
-    const { content } = data;
   }
   onmessage(data: MessageData) {
     this.room?.members.forEach((item) => item.send(data));
   }
+  // 客户端返回错误
   onerror(data: MessageData) {}
-  onexit(data: MessageData) {}
+  onexit() {
+    if (!this.roomId) return;
+    if (this.room?.status !== "playing") {
+      Room.exitRoom(this.roomId, this);
+    }
+  }
+  // 发送错误信息
   sendError(msg: string) {
     this.send({ type: "error", msg });
   }

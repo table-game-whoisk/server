@@ -4,6 +4,7 @@ type roomId = string;
 // DB
 declare interface UserProp {
   id: string;
+  ip: string;
   nickname?: string;
 }
 type materialType = "character" | "card" | "clue";
@@ -53,8 +54,14 @@ declare interface CardProp {
 }
 
 // ws
+declare type roomStatus = "ready" | "playing" | "end";
+
+declare type playerStatus = "offline" | "online" | "ready" | "playing";
+
+declare type messageType = "info" | "message" | "enter" | "start" | "exit" | "error";
+
 declare interface MessageData {
-  type: "info" | "message" | "enter" | "start" | "character" | "exit" | "error";
+  type: messageType;
   from?: userId;
   timestamp?: number;
   to?: userId | userId[];
@@ -125,12 +132,12 @@ namespace Game {
   }
 }
 
+// test
 namespace Test {
   declare interface Listener {
     userId: string;
     socket: WebSocket.websocket;
     message: () => Promise<MessageData>;
-    getMessages: (type?: MessageData["type"]) => Promise<MessageData[]>;
     send: (message: MessageData) => void;
   }
 }

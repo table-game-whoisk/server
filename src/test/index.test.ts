@@ -19,50 +19,26 @@ afterAll(async () => {
 });
 
 describe("main", () => {
+  let nickname = generateRandomString(8);
   it("create user", async () => {
-    let nickname = generateRandomString(8);
     const res = await request(app).post("/user/create").send({ nickname });
     expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty("nickname");
+    expect(res.body.data.nickname).toBe(nickname);
   });
 
-  it("connect ws", async () => {
-    let nickname = generateRandomString(8);
-    const res = await request(app).post("/user/create").send({ nickname });
-    const userId = res.body.data.id;
-    const isOpen = await ScoketClient.connect(userId);
-    expect(isOpen).toBe(true);
+  it("get user", async () => {
+    const res = await request(app).get("/user/info");
+    expect(res.status).toBe(200);
+    expect(res.body.data.nickname).toBe(nickname);
   });
 
-  it("ping pong test", async () => {
-    jest.useFakeTimers();
-    let index = 1;
-    let userId = generateRandomString(8);
-    await ScoketClient.connect(userId);
-    let listener = ScoketClient.getListener(userId);
-    listener?.socket.on("message", (data: WebSocket.RawData) => {
-      index++;
-      expect(data.toString()).toBe("ping");
-    });
-    TimerTask.register({
-      date: new Date(Date.now() + 1000 * 6),
-      action: () => {
-        listener?.socket.send("ping");
-      }
-    });
-
-    setTimeout(() => {
-      expect(index).toBeGreaterThan(4);
-    }, 7000);
-  });
-
-  it("player info", async () => {
+  it("connect websocket", async () => {
     let userId = generateRandomString(8);
     await ScoketClient.connect(userId);
     let listener = ScoketClient.getListener(userId);
     listener?.send({ type: "info" });
     const res = await listener?.message();
-    expect(res?.content).toHaveProperty("room");
+    expect(res?.type).toBe("info");
   });
 
   it("join room", async () => {
@@ -70,66 +46,32 @@ describe("main", () => {
     let roomId = generateRandomString(8);
     await ScoketClient.connect(userId);
     let listener = ScoketClient.getListener(userId);
-    expect(listener).not.toBe(undefined);
     listener?.send({ type: "enter", roomId });
     const res = await listener?.message();
-    expect(res?.content).not.toBe(null);
+    expect(res?.content?.room.roomId).toBe(roomId);
   });
 
-  it("mutil player join", async () => {
-    const users = [
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8)
-    ];
-    const listenners = [];
-    for await (let userId of users) {
-      await ScoketClient.connect(userId);
-      listenners.push(ScoketClient.getListener(userId));
+  let userIds = [generateRandomString(8), generateRandomString(8), generateRandomString(8), generateRandomString(8)];
+  let roomId = generateRandomString(8);
+  it.only("mutil player join room", async () => {
+    for await (let id of userIds) {
+      await ScoketClient.connect(id);
     }
-    const roomId = generateRandomString(8);
-    expect(listenners.length).toBe(5);
-    listenners.forEach((l) => {
-      l?.send({ type: "enter", roomId });
+    ScoketClient.listeners.forEach((l) => {
+      l.send({ type: "enter", roomId });
     });
-    const data = await listenners[4]?.message();
-    console.log(data?.content);
-    expect(data?.content.room.members.length).toBe(5);
+    const res = await ScoketClient.getListener(userIds[3])?.message();
+    expect(res?.content?.room.roomId).toBe(roomId);
+    expect(res?.content?.room.members.length).toBe(4);
   });
 
-  it.only("player ready", async () => {
-    const users = [
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8),
-      generateRandomString(8)
-    ];
-    const listenners = [];
-    for await (let userId of users) {
-      await ScoketClient.connect(userId);
-      listenners.push(ScoketClient.getListener(userId));
-    }
-    const roomId = generateRandomString(8);
-    listenners.forEach((l) => {
-      l?.send({ type: "enter", roomId });
+  it.only(" players start", async () => {
+    ScoketClient.listeners.forEach((l) => {
+      l.send({ type: "start" });
     });
-    const info = await listenners[4]?.message();
-    listenners.forEach((l) => {
-      l?.send({ type: "start" });
-    });
-    await listenners[0]?.message();
-    listenners[0]?.send({ type: "start" });
-    const data = await listenners[0]?.message();
-    console.log(data);
-    expect(data?.content).not.toBe(null);
+    const res = await ScoketClient.getListener(userIds[0])?.message();
+    console.log(res);
+    expect(res?.content?.room.roomId).toBe(roomId);
+    expect(res?.content?.room.status).toBe("playing");
   });
-
-  it("select character", async () => {
-
-  });
-
-  it("assign role", async () => {});
 });

@@ -11,25 +11,24 @@ class User {
     try {
       let id = "";
       const { nickname } = req.body;
+      const ip = req.ip;
       id = v1();
-      while (UserCache.existUser(id)) {
-        id = v1();
-      }
       const user = await UserModel.create({
         id,
-        nickname
+        nickname,
+        ip
       });
       UserCache.list.set(id, user);
-      res.json({ data: user.toJSON() });
+      res.json({ data: user });
     } catch (e) {
       next(e);
     }
   };
   userInfo: RequestHandler = async (req, res, next) => {
     try {
-      const { id } = req.params;
-      const user = UserCache.findUser(id);
-      user ? res.json({ data: user.toJSON() }) : res.json({ data: null });
+      const ip = req.ip;
+      const user = await UserModel.findOne({ where: { ip } });
+      user ? res.json({ data: user }) : res.json({ data: null });
     } catch (e) {
       next(e);
     }
