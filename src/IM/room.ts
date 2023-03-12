@@ -35,13 +35,14 @@ export class Room {
   }
   static exitRoom(roomId: roomId, player: Player) {
     const room = Room.rooms.get(roomId);
-    room?.members.delete(player);
+    if(room?.status!=="playing"){
+      room?.members.delete(player);
+    }
     room?.members.forEach((p) => {
       p.oninfo();
     });
     player.oninfo();
     if (room?.members.size === 0) {
-      room.status = "end";
       Room.destroyRoom(roomId);
     }
   }

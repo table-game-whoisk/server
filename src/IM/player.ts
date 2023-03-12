@@ -1,12 +1,15 @@
 import WebSocket from "ws";
+import { TimerTask } from "../utils/timerTask";
 import { Room } from "./room";
 
 export class Player {
+  avatar: string | null = null;
+  nickname: string | null = null;
+  status: playerStatus = "online";
   userId: userId;
   roomId: string | null = null;
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
-  status: playerStatus = "online";
 
   constructor(userId: userId) {
     this.userId = userId;
@@ -17,7 +20,6 @@ export class Player {
     ws.on("close", (code, reason) => this.handleClose.call(this));
     ws.on("error", (err) => this.handleError.call(this, err));
     this.ws = ws;
-
     this.oninfo();
   }
   private send(data: MessageData) {
@@ -65,8 +67,15 @@ export class Player {
     }
     this.status = "ready";
     const isAllready = [...(room?.members || [])].every((item) => item.status === "ready");
-    room.status = isAllready && room?.members.size > 4 ? "ready" : "playing";
+    // 全部准备就绪后自动开始游戏
+    // room.status = isAllready && room?.members.size > 4 ? "ready" : "playing";
+    if (isAllready) {
+      room.status = "playing";
+    }
     room.members.forEach((item) => {
+      if (isAllready) {
+        item.status = "playing";
+      }
       item.oninfo();
     });
   }
@@ -77,9 +86,7 @@ export class Player {
   onerror(data: MessageData) {}
   onexit() {
     if (!this.roomId) return;
-    if (this.room?.status !== "playing") {
-      Room.exitRoom(this.roomId, this);
-    }
+    Room.exitRoom(this.roomId, this);
   }
   // 发送错误信息
   sendError(msg: string) {

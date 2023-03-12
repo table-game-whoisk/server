@@ -54,7 +54,7 @@ declare interface CardProp {
 }
 
 // ws
-declare type roomStatus = "ready" | "playing" | "end";
+declare type roomStatus = "ready" | "playing" ;
 
 declare type playerStatus = "offline" | "online" | "ready" | "playing";
 
