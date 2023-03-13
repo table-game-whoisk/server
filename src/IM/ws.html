@@ -62,13 +62,6 @@
         const userId = generateRandomString(8);
         const nickname = query("nickname").value || generateRandomString(8);
         ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userId}&nickname=${nickname}&avatarUrl=${avatarUrl}`);
-        const reconnect = () => {
-          ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userId}&nickname=${nickname}&avatarUrl=${avatarUrl}`);
-          ws.onopen = () => {
-            console.log("Connection open ...");
-            heartcheck();
-          };
-        };
         ws.onopen = () => {
           console.log("Connection open ...");
           heartcheck();
@@ -77,7 +70,6 @@
           console.log("Connection close ...");
           clearInterval(timer);
           timer = null;
-          reconnect();
         };
         ws.onerror = (e) => {
           console.log(e);
