@@ -8,27 +8,62 @@
   </head>
   <body>
     <div>
-      <input type="text" id="user" />
-      <input type="text" id="roomid" />
-      <button id="connect">connect</button>
-      <button id="info">info</button>
-      <button id="close">close</button>
-      <button id="ping">ping</button>
+      <div>
+        <img src="" alt="" id="avatar" />
+      </div>
+      <div>
+        nickname: <input type="text" id="nickname" />
+        <button id="connect">connect</button>
+        <button id="close">close</button>
+      </div>
+      <div>roomid: <input type="text" id="roomId" /> <button id="joinRoom">加入房间</button></div>
+      <div>
+        <button id="createRoom">创建房间</button>
+      </div>
+      <div>
+        <button id="ready">ready</button>
+      </div>
     </div>
     <ul id="messages" style="height: 300px; overflow: auto"></ul>
     <textarea name="" id="text" cols="30" rows="10"></textarea>
     <button id="send">send</button>
     <button id="send">sendCard</button>
     <script>
+      const avatarUrls = [
+        "http://img.520touxiang.com/uploads/allimg/2018122110/1hnczuozxys.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/n0xyfe52qbn.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/0jrrouozrw3.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/fk5b0xd02gb.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/5w5cvnax4b4.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/fi4yv0dnddb.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/w50cfhehfmm.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/32eykkfknsl.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/3varmbmpm45.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/xom43z0t1b4.jpg"
+      ];
       let ws = null;
       let timer = null;
-      document.getElementById("connect").onclick = () => {
-        const userid = document.getElementById("user").value || Math.floor(Math.random() * 10);
-        const roomid = document.getElementById("roomid").value || Math.floor(Math.random() * 100);
+      const avatarUrl = avatarUrls[Math.floor(Math.random() * 10)];
+      function query(id) {
+        return document.getElementById(id);
+      }
+      query("avatar").setAttribute("src", avatarUrl);
 
-        ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userid}&roomId=${roomid}`);
+      function generateRandomString(length) {
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+          result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+      }
+
+      query("connect").onclick = () => {
+        const userId = generateRandomString(8);
+        const nickname = query("nickname").value || generateRandomString(8);
+        ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userId}&nickname=${nickname}&avatarUrl=${avatarUrl}`);
         const reconnect = () => {
-          ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userid}&roomId=${roomid}`);
+          ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userId}&nickname=${nickname}&avatarUrl=${avatarUrl}`);
           ws.onopen = () => {
             console.log("Connection open ...");
             heartcheck();
@@ -47,18 +82,14 @@
         ws.onerror = (e) => {
           console.log(e);
         };
-        const ulElement = document.getElementById("messages");
+        const ulElement = query("messages");
         ws.onmessage = ({ data }) => {
           if (data === "pong") {
-            console.log("pong");
             return;
           }
-          console.log(data)
-          const li = document.createElement("li");
-          li.innerHTML = data;
-          ulElement.appendChild(li);
+          console.log(JSON.parse(data));
         };
-        document.getElementById("close").onclick = () => {
+        query("close").onclick = () => {
           ws.close();
         };
       };
@@ -67,18 +98,29 @@
           ws.send("ping");
         }, 1000);
       }
-      document.getElementById("send").onclick = () => {
+
+      function enterRoom(roomId) {
+        ws.send(JSON.stringify({ type: "enter", roomId }));
+      }
+      query("createRoom").onclick = () => {
+        let roomId = generateRandomString(8);
+        ws && enterRoom(roomId);
+      };
+      query("joinRoom").onclick = () => {
+        let roomId = query("roomId").value;
+        if (!roomId) return;
+        ws && enterRoom(roomId);
+      };
+      query("ready").onclick = () => {
+        ws && ws.send(JSON.stringify({ type: "ready" }));
+      };
+
+      query("send").onclick = () => {
         if (ws) {
-          const text = document.getElementById("text").value;
+          const text = query("text").value;
           text && ws.send(JSON.stringify({ type: "message", content: text }));
-          document.getElementById("text").value = "";
+          query("text").value = "";
         }
-      };
-      document.getElementById("ping").onclick = () => {
-        ws.send("ping");
-      };
-      document.getElementById("info").onclick = () => {
-        ws.send(JSON.stringify({ type: "info" }));
       };
     </script>
   </body>

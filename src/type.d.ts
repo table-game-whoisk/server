@@ -54,15 +54,30 @@ declare interface CardProp {
 }
 
 // ws
-declare type roomStatus = "ready" | "playing" ;
+declare type roomStatus = "ready" | "playing";
 
 declare type playerStatus = "offline" | "online" | "ready" | "playing";
 
-declare type messageType = "info" | "message" | "enter" | "start" | "exit" | "error";
+declare type messageType = "info" | "create" | "enter" | "exit" | "ready" | "start" | "message" | "error";
+
+declare interface PlayerInfo {
+  id: string;
+  status: string;
+  avatarUrl: string | null;
+  nickname: string | null;
+}
+
+declare interface RoomInfo {
+  roomId: string | null;
+  status: string | null;
+  owner: string | null;
+  members: PlayerInfo[];
+}
 
 declare interface MessageData {
   type: messageType;
-  from?: userId;
+  player?: PlayerInfo;
+  room?: RoomInfo | null;
   timestamp?: number;
   to?: userId | userId[];
   msg?: string;

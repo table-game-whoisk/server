@@ -3,7 +3,7 @@ import { TimerTask } from "../utils/timerTask";
 import { Room } from "./room";
 
 export class Player {
-  avatar: string | null = null;
+  avatarUrl: string | null = null;
   nickname: string | null = null;
   status: playerStatus = "online";
   userId: userId;
@@ -11,24 +11,26 @@ export class Player {
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
 
-  constructor(userId: userId) {
+  constructor({ userId, avatarUrl, nickname }: { userId: userId; avatarUrl: string | null; nickname: string | null }) {
     this.userId = userId;
+    this.avatarUrl = avatarUrl || null;
+    this.nickname = nickname || null;
   }
 
   startListen(ws: WebSocket.WebSocket) {
-    this.status = this.room?.status === "playing" ? "playing" : "online";
-    ws.on("close", (code, reason) => this.handleClose.call(this));
+    if (this.room?.status === "playing") {
+      this.status = "playing";
+      this.room.members.forEach((p) => p.oninfo());
+    } else {
+      this.status = "online";
+    }
+    ws.on("close", (code, reason) => this.onexit.call(this));
     ws.on("error", (err) => this.handleError.call(this, err));
     this.ws = ws;
     this.oninfo();
   }
   private send(data: MessageData) {
     this.ws?.send(JSON.stringify({ ...data, from: this.userId, timestamp: Date.now() }));
-  }
-  private handleClose() {
-    this.ws = null;
-    this.status = "offline";
-    this.onexit();
   }
   // ws 错误
   private handleError(err: Error) {}
@@ -37,45 +39,65 @@ export class Player {
     const { type } = data;
     player[`on${type}`]?.call(player, data);
   }
-
   oninfo(data?: MessageData) {
-    const { room, roomId, userId, status } = this;
+    const { room, roomId, userId, status, avatarUrl, nickname } = this;
     this.send({
       type: "info",
-      content: {
-        room: {
-          ...room,
-          roomId,
-          members: [...(room?.members || [])].map(({ userId, status }) => ({ id: userId, status }))
-        },
-        player: {
-          status,
-          id: userId
-        }
-      }
+      player: { status, id: userId, avatarUrl, nickname },
+      room: room
+        ? {
+            roomId,
+            status: room?.status || null,
+            owner: room?.owner || null,
+            members: [...(room?.members || [])].map(({ userId, status, nickname, avatarUrl }) => ({
+              id: userId,
+              status,
+              nickname,
+              avatarUrl
+            }))
+          }
+        : null
     });
   }
+  oncreate(data: MessageData) {
+    const { roomId } = data;
+    Room.createRoom(roomId, this);
+  }
   onenter(data: MessageData) {
-    const { type, content, roomId, to, from } = data;
+    const { roomId } = data;
     Room.enterRoom(roomId, this);
   }
-  onstart(data: MessageData) {
+  onstart() {
+    const { room } = this;
+    if (!room) {
+      this.sendError("当前还未加入任何房间");
+      return;
+    }
+    const isAllready = [...(room?.members || [])].every((item) => item.status === "ready");
+    if (room.owner !== this.userId) {
+      this.sendError("只有房主才能开始游戏");
+      return;
+    } else if (!isAllready) {
+      this.sendError("还有玩家未准备");
+      return;
+    } else if (room?.members.size < 4) {
+      this.sendError("玩家小于4人");
+      return;
+    }
+    room.status = "playing";
+    room.members.forEach((item) => {
+      item.status = "playing";
+      item.oninfo();
+    });
+  }
+  onready(data: MessageData) {
     const { room } = this;
     if (!room) {
       this.sendError("当前还未加入任何房间");
       return;
     }
     this.status = "ready";
-    const isAllready = [...(room?.members || [])].every((item) => item.status === "ready");
-    // 全部准备就绪后自动开始游戏
-    // room.status = isAllready && room?.members.size > 4 ? "ready" : "playing";
-    if (isAllready) {
-      room.status = "playing";
-    }
     room.members.forEach((item) => {
-      if (isAllready) {
-        item.status = "playing";
-      }
       item.oninfo();
     });
   }
@@ -86,7 +108,17 @@ export class Player {
   onerror(data: MessageData) {}
   onexit() {
     if (!this.roomId) return;
-    Room.exitRoom(this.roomId, this);
+    const room = Room.rooms.get(this.roomId);
+    if (this.room?.status === "ready" && this.status === "online") {
+      Room.exitRoom(this.roomId, this);
+      this.room = null;
+      this.roomId = null;
+    }
+    this.status = "offline";
+    this.ws = null;
+    room?.members.forEach((p) => {
+      p.oninfo();
+    });
   }
   // 发送错误信息
   sendError(msg: string) {

@@ -8,13 +8,13 @@ class IM {
   timer: NodeJS.Timer | null = null;
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
-    const { userId } = this.parseParam(req);
+    const { userId, nickname, avatarUrl } = this.parseParam(req);
     if (!userId) {
       return logger.error("error connected method");
     }
     let player = this.players.get(userId);
     if (!player) {
-      player = new Player(userId);
+      player = new Player({ userId, nickname, avatarUrl });
       this.players.set(userId, player);
     }
     ws.on("message", (data) => {
@@ -35,7 +35,9 @@ class IM {
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
     const userId = params.get("userId");
-    return { userId };
+    const nickname = params.get("nickname");
+    const avatarUrl = params.get("avatarUrl");
+    return { userId, nickname, avatarUrl };
   }
 }
 export const im = new IM();
