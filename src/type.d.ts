@@ -58,7 +58,16 @@ declare type roomStatus = "ready" | "playing";
 
 declare type playerStatus = "offline" | "online" | "ready" | "playing";
 
-declare type messageType = "info" | "create" | "enter" | "exit" | "ready" | "start" | "message" | "error";
+declare type messageType =
+  | "info"
+  | "create"
+  | "enter"
+  | "exit"
+  | "ready"
+  | "start"
+  | "message"
+  | "getMessage"
+  | "error";
 
 declare interface PlayerInfo {
   id: string;
@@ -67,11 +76,18 @@ declare interface PlayerInfo {
   nickname: string | null;
 }
 
+declare interface Message {
+  timestamp: number;
+  messageFrom: PlayerInfo;
+  to?: userId | userId[] | undefined;
+  message: string;
+}
+
 declare interface RoomInfo {
   roomId: string | null;
   status: string | null;
   owner: string | null;
-  members: PlayerInfo[];
+  members: PlayerInfo[] | null;
 }
 
 declare interface MessageData {
@@ -83,6 +99,7 @@ declare interface MessageData {
   msg?: string;
   roomId?: roomId;
   content?: any;
+  messages?: Message[];
 }
 
 declare interface Task {

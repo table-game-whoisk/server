@@ -49,12 +49,7 @@ export class Player {
             roomId,
             status: room?.status || null,
             owner: room?.owner || null,
-            members: [...(room?.members || [])].map(({ userId, status, nickname, avatarUrl }) => ({
-              id: userId,
-              status,
-              nickname,
-              avatarUrl
-            }))
+            members: room.getMembers()
           }
         : null
     });
@@ -102,7 +97,48 @@ export class Player {
     });
   }
   onmessage(data: MessageData) {
-    this.room?.members.forEach((item) => item.send(data));
+    const { to, content } = data;
+    const { userId, roomId, status: playerStatus, avatarUrl, nickname } = this;
+    if (!roomId) return;
+    const room = Room.rooms.get(roomId);
+    if (!room) return;
+    const { status, owner, messages } = room;
+    room?.messages.push({
+      messageFrom: { status: playerStatus, id: userId, avatarUrl, nickname },
+      to,
+      timestamp: Date.now(),
+      message: content
+    });
+    room?.members.forEach((item) =>
+      item.send({
+        type: "message",
+        room: {
+          roomId,
+          status,
+          owner,
+          members: room.getMembers()
+        },
+        messages
+      })
+    );
+  }
+  ongetMessage() {
+    const { userId, roomId, status: playerStatus, avatarUrl, nickname } = this;
+    if (!roomId) return;
+    const room = Room.rooms.get(roomId);
+    if (!room) return;
+    const { status, owner, messages } = room;
+    this.send({
+      type: "message",
+      room: {
+        roomId,
+        status,
+        owner,
+        members: room.getMembers()
+      },
+      messages
+    });
+    return;
   }
   // 客户端返回错误
   onerror(data: MessageData) {}
