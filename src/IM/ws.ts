@@ -30,7 +30,7 @@ class IM {
       ws.send("pong");
       return null;
     }
-    return JSON.parse(res) as MessageData;
+    return JSON.parse(res) as MessageData<messageType>;
   }
   parseParam(req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));

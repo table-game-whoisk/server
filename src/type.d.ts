@@ -65,6 +65,9 @@ declare type messageType =
   | "exit"
   | "ready"
   | "start"
+  | "character"
+  | "round"
+  | "vote"
   | "message"
   | "getMessage"
   | "error";
@@ -90,7 +93,12 @@ declare interface RoomInfo {
   members: PlayerInfo[] | null;
 }
 
-declare interface MessageData {
+declare interface SelecteCharacter {
+  characterId?: string;
+  characteList?: CharacterProp[];
+}
+
+declare interface MessageData<T extends messageType = "messages"> {
   type: messageType;
   player?: PlayerInfo;
   room?: RoomInfo | null;
@@ -98,7 +106,7 @@ declare interface MessageData {
   to?: userId | userId[];
   msg?: string;
   roomId?: roomId;
-  content?: any;
+  content?: T extends "messages" ? string : T extends "character" ? SelecteCharacter : string;
   messages?: Message[];
 }
 
@@ -110,6 +118,7 @@ declare interface Task {
 namespace Game {
   // 公用类型
   type deck = "center" | "hands" | "equip" | "bulletin";
+  type gameStep = "start" | "character" | "round" | "vote" | "end";
 
   // 角色类
   interface Character {

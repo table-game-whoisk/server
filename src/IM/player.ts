@@ -29,17 +29,18 @@ export class Player {
     this.ws = ws;
     this.oninfo();
   }
-  private send(data: MessageData) {
+  private send<T extends messageType>(data: MessageData<T>) {
     this.ws?.send(JSON.stringify({ ...data, from: this.userId, timestamp: Date.now() }));
   }
   // ws 错误
   private handleError(err: Error) {}
-  static dispatchMessage(data: MessageData, player: Player | undefined) {
+  static dispatchMessage<T extends messageType>(data: MessageData<T>, player: Player | undefined) {
     if (!player) return;
     const { type } = data;
-    player[`on${type}`]?.call(player, data);
+    player[`on${type}`]?.call(player, data as MessageData<typeof type>);
   }
-  oninfo(data?: MessageData) {
+  private rawInfo() {}
+  oninfo() {
     const { room, roomId, userId, status, avatarUrl, nickname } = this;
     this.send({
       type: "info",
@@ -54,11 +55,11 @@ export class Player {
         : null
     });
   }
-  oncreate(data: MessageData) {
+  oncreate(data: MessageData<"create">) {
     const { roomId } = data;
     Room.createRoom(roomId, this);
   }
-  onenter(data: MessageData) {
+  onenter(data: MessageData<"enter">) {
     const { roomId } = data;
     Room.enterRoom(roomId, this);
   }
@@ -80,12 +81,33 @@ export class Player {
       return;
     }
     room.status = "playing";
+    room.gameStep = "start";
     room.members.forEach((item) => {
       item.status = "playing";
       item.oninfo();
     });
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 3),
+      action: () => {
+        room.gameStep = "character";
+        room.members.forEach((item) => {
+          item.sendCharacterList();
+        });
+      }
+    });
+    // 一分钟开始玩家回合
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 63),
+      action: () => {
+        room.gameStep = "round";
+        const currRound = [...room.members][0]?.userId;
+        room.members.forEach((item) => {
+          item.sendRound(currRound);
+        });
+      }
+    });
   }
-  onready(data: MessageData) {
+  onready() {
     const { room } = this;
     if (!room) {
       this.sendError("当前还未加入任何房间");
@@ -96,7 +118,7 @@ export class Player {
       item.oninfo();
     });
   }
-  onmessage(data: MessageData) {
+  onmessage(data: MessageData<"message">) {
     const { to, content } = data;
     const { userId, roomId, status: playerStatus, avatarUrl, nickname } = this;
     if (!roomId) return;
@@ -107,7 +129,7 @@ export class Player {
       messageFrom: { status: playerStatus, id: userId, avatarUrl, nickname },
       to,
       timestamp: Date.now(),
-      message: content
+      message: content || ""
     });
     room?.members.forEach((item) =>
       item.send({
@@ -140,8 +162,55 @@ export class Player {
     });
     return;
   }
+  oncharacter(data: MessageData<"character">) {
+    const { content } = data;
+    // 用户选择角色逻辑
+    if (content && content.characterId) {
+      return;
+    }
+  }
+  onround(data: MessageData<"round">) {
+    // 回合结束，将当前回合指向下一个玩家
+  }
+  onvote() {}
+  sendCharacterList() {
+    this.send<"character">({
+      type: "character",
+      content: {
+        characteList: []
+      }
+    });
+  }
+  sendRound(currRound: userId) {
+    if (!this.roomId) return;
+    const room = Room.rooms.get(this.roomId);
+    if (!room) return;
+    room.currRound = currRound;
+    this.send<"round">({ type: "round", content: currRound });
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 60),
+      action: () => {
+        if (room.currRound === currRound) {
+          const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
+          const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+          room.members.forEach((item) => {
+            if (nextRound) {
+              item.sendRound(nextRound);
+            } else {
+              item.sendVote();
+            }
+          });
+        }
+      }
+    });
+  }
+  sendVote() {
+    if (!this.roomId) return;
+    const room = Room.rooms.get(this.roomId);
+    if (!room) return;
+  }
   // 客户端返回错误
-  onerror(data: MessageData) {}
+  onerror() {}
   onexit() {
     if (!this.roomId) return;
     const room = Room.rooms.get(this.roomId);
