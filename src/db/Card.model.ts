@@ -20,6 +20,9 @@ export function initCardModel() {
       },
       describe: {
         type: DataTypes.STRING
+      },
+      SkillId: {
+        type: DataTypes.STRING
       }
     },
     {

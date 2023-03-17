@@ -22,6 +22,7 @@
       </div>
       <div>
         <button id="ready">ready</button>
+        <button id="start">start</button>
       </div>
     </div>
     <ul id="messages" style="height: 300px; overflow: auto"></ul>
@@ -97,23 +98,21 @@
           ws.send("ping");
         }, 1000);
       }
-
-      function enterRoom(roomId) {
-        ws.send(JSON.stringify({ type: "enter", roomId }));
-      }
       query("createRoom").onclick = () => {
         let roomId = generateRandomString(8);
-        ws && enterRoom(roomId);
+        ws &&   ws.send(JSON.stringify({ type: "create", roomId }));
       };
       query("joinRoom").onclick = () => {
         let roomId = query("roomId").value;
         if (!roomId) return;
-        ws && enterRoom(roomId);
+        ws &&   ws.send(JSON.stringify({ type: "enter", roomId }));
       };
       query("ready").onclick = () => {
         ws && ws.send(JSON.stringify({ type: "ready" }));
       };
-
+      query("start").onclick = () => {
+        ws && ws.send(JSON.stringify({ type: "start" }));
+      };
       query("send").onclick = () => {
         if (ws) {
           const text = query("text").value;

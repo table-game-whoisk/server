@@ -29,6 +29,9 @@ export function initCharacter() {
       },
       dodge: {
         type: DataTypes.INTEGER
+      },
+      SkillId: {
+        type: DataTypes.STRING
       }
     },
     {

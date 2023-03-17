@@ -18,10 +18,16 @@ export function initSkillModel() {
       describe: {
         type: DataTypes.STRING
       },
-      action: {
+      effectType: {
         type: DataTypes.STRING
       },
       duration: {
+        type: DataTypes.INTEGER
+      },
+      timing: {
+        type: DataTypes.STRING
+      },
+      target: {
         type: DataTypes.STRING
       },
       health: {
@@ -36,21 +42,18 @@ export function initSkillModel() {
       dodge: {
         type: DataTypes.INTEGER
       },
-      drop: {
-        type: DataTypes.STRING
-      },
-      pickUp: {
-        type: DataTypes.INTEGER
-      },
-      where: {
-        type: DataTypes.STRING
-      },
-      to: DataTypes.STRING,
+      action: { type: DataTypes.STRING },
+      roundNumber: { type: DataTypes.CHAR },
+      cardOrigin: { type: DataTypes.STRING },
       cardType: {
         type: DataTypes.STRING
       },
-      effectStep: DataTypes.STRING,
-      effectType: DataTypes.CHAR
+      drop: {
+        type: DataTypes.STRING
+      },
+      gain: {
+        type: DataTypes.INTEGER
+      }
     },
     { sequelize, timestamps: false, modelName: "Skill", tableName: "skill" }
   ).sync();

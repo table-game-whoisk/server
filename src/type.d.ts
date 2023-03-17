@@ -26,22 +26,24 @@ declare interface SkillProp {
   id: string;
   name: string;
   describe: string;
-  action?: "pickUp" | "drop" | "use" | "mute" | "attribute";
+  effectType: EffectType;
   duration?: number;
-
+  timing: EffetcTime; // 发动时机
+  target: EffectTarget;
+  // 对角色属性影响
   health?: number;
   attack?: number;
   defense?: number;
   dodge?: number;
 
-  where?: string; // 作用对象 牌组处，玩家处
-  to?: string;
+  // 对玩家回合影响
+  action?: RoundAction;
+  roundNumber?: number;
+  // 对卡牌影响
+  cardOrigin?: CardOrigin;
+  cardType?: cardType;
   drop?: number;
-  pickUp?: number;
-  cardType?: string; //卡牌类型
-
-  effectStep?: string;
-  effectType?: number;
+  gain?: number;
 }
 
 declare interface CardProp {
@@ -53,10 +55,48 @@ declare interface CardProp {
   Skill?: SkillProp | null;
 }
 
+// game material
+declare type EffectType = "characterEffect" | "roundEffect" | "cardSetpEffect";
+declare type EffetcTime = "selfRound" | "ortherRound" | "anytime";
+declare type EffectTarget = "self" | "anyone" | "all";
+declare type CardOrigin = "center" | "anyone";
+declare type RoundAction = "mute" | "gainCard" | "useCard";
+
+declare interface CharacterEffect {
+  health: number;
+  attack: number;
+  defense: number;
+  dodge: number;
+}
+
+declare interface RoundEffect {
+  action: RoundAction;
+  roundNumber: number;
+}
+
+declare interface CardSetpEffect {
+  cardOrigin: CardOrigin;
+  cardType?: cardType;
+  drop: number; // 约定 -1 为失去cardtype 对应的所有牌
+  gain: number;
+}
+
+declare interface Skill<T extends EffectType> {
+  id: string;
+  name: string;
+  describe: string;
+  effectType: EffectType;
+  timing: EffetcTime; // 发动时机
+  duration?: number;
+  effect: T extends "characterEffect" ? CharacterEffect : T extends "roundEffect" ? RoundEffect : CardSetpEffect;
+}
+
 // ws
 declare type roomStatus = "ready" | "playing";
 
 declare type playerStatus = "offline" | "online" | "ready" | "playing";
+
+declare type EffectTarget = "self" | "anyone" | "all";
 
 declare type messageType =
   | "info"
