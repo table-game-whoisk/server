@@ -24,6 +24,9 @@
         <button id="ready">ready</button>
         <button id="start">start</button>
       </div>
+      <div>
+        <button id="round">endRound</button>
+      </div>
     </div>
     <ul id="messages" style="height: 300px; overflow: auto"></ul>
     <textarea name="" id="text" cols="30" rows="10"></textarea>
@@ -82,11 +85,13 @@
           console.log(JSON.parse(data));
           const { type, messages } = JSON.parse(data);
           if (type === "message") {
-            query("messages").replaceChildren(...messages.map(({message})=>{
-              const li = document.createElement("li");
-              li.innerHTML = message;
-              return li
-            }))
+            query("messages").replaceChildren(
+              ...messages.map(({ message }) => {
+                const li = document.createElement("li");
+                li.innerHTML = message;
+                return li;
+              })
+            );
           }
         };
         query("close").onclick = () => {
@@ -100,12 +105,12 @@
       }
       query("createRoom").onclick = () => {
         let roomId = generateRandomString(8);
-        ws &&   ws.send(JSON.stringify({ type: "create", roomId }));
+        ws && ws.send(JSON.stringify({ type: "create", roomId }));
       };
       query("joinRoom").onclick = () => {
         let roomId = query("roomId").value;
         if (!roomId) return;
-        ws &&   ws.send(JSON.stringify({ type: "enter", roomId }));
+        ws && ws.send(JSON.stringify({ type: "enter", roomId }));
       };
       query("ready").onclick = () => {
         ws && ws.send(JSON.stringify({ type: "ready" }));
@@ -118,6 +123,11 @@
           const text = query("text").value;
           text && ws.send(JSON.stringify({ type: "message", content: text }));
           query("text").value = "";
+        }
+      };
+      query("round").onclick = () => {
+        if (ws) {
+          text && ws.send(JSON.stringify({ type: "round" }));
         }
       };
     </script>

@@ -3,6 +3,7 @@ import { logger } from "../utils/logger";
 import { Player } from "./player";
 
 export class Room {
+  roomId: roomId | null = null;
   members = new Set<Player>();
   owner: userId | null = null;
   status: roomStatus = "ready";
@@ -16,21 +17,37 @@ export class Room {
   }
   getMembers() {
     if (this.members.size > 0) {
-      return [...this.members].map(({ userId, status, nickname, avatarUrl }) => ({
+      return [...this.members].map(({ userId, status, nickname, avatarUrl, character }) => ({
         id: userId,
         status,
         nickname,
-        avatarUrl
+        avatarUrl,
+        character
       }));
     }
     return null;
   }
+  rawInfo() {
+    const { roomId, owner, status, messages, gameStep } = this;
+    if (!roomId) return null;
+    return {
+      roomId,
+      owner,
+      status,
+      members: this.getMembers(),
+      messages,
+      gameStep
+    } as RoomInfo;
+  }
+  // 判断游戏状态
+  checkStatus() {}
   static createRoom(roomId: string | undefined, player: Player) {
     if (!roomId) return;
     if (Room.rooms.has(roomId)) {
       player.sendError("房间已存在");
     } else {
       const room = new Room();
+      room.roomId = roomId;
       room.owner = player.userId;
       Room.rooms.set(roomId, room);
       Room.enterRoom(roomId, player);

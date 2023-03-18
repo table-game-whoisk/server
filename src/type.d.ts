@@ -116,6 +116,7 @@ declare interface PlayerInfo {
   id: string;
   status: string;
   avatarUrl: string | null;
+  character: CharacterProp | null;
   nickname: string | null;
 }
 
@@ -130,11 +131,12 @@ declare interface RoomInfo {
   roomId: string | null;
   status: string | null;
   owner: string | null;
+  gameStep: Game.gameStep | null;
   members: PlayerInfo[] | null;
 }
 
 declare interface SelecteCharacter {
-  characterId?: string;
+  character?: CharacterProp;
   characteList?: CharacterProp[];
 }
 
@@ -146,7 +148,13 @@ declare interface MessageData<T extends messageType = "messages"> {
   to?: userId | userId[];
   msg?: string;
   roomId?: roomId;
-  content?: T extends "messages" ? string : T extends "character" ? SelecteCharacter : string;
+  content?: T extends "messages"
+    ? string
+    : T extends "character"
+    ? SelecteCharacter
+    : T extends "round"
+    ? PlayerInfo
+    : string;
   messages?: Message[];
 }
 

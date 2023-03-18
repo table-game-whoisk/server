@@ -11,6 +11,8 @@ export class Player {
   roomId: string | null = null;
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
+  character: CharacterProp | null = null;
+  cardList: CardProp[] = [];
 
   constructor({ userId, avatarUrl, nickname }: { userId: userId; avatarUrl: string | null; nickname: string | null }) {
     this.userId = userId;
@@ -40,20 +42,22 @@ export class Player {
     const { type } = data;
     player[`on${type}`]?.call(player, data as MessageData<typeof type>);
   }
-  private rawInfo() {}
+  private rawInfo() {
+    const { userId, status, avatarUrl, nickname, character } = this;
+    return {
+      status,
+      id: userId,
+      avatarUrl,
+      nickname,
+      character
+    } as PlayerInfo;
+  }
   oninfo() {
-    const { room, roomId, userId, status, avatarUrl, nickname } = this;
+    const { room, roomId } = this;
     this.send({
       type: "info",
-      player: { status, id: userId, avatarUrl, nickname },
-      room: room
-        ? {
-            roomId,
-            status: room?.status || null,
-            owner: room?.owner || null,
-            members: room.getMembers()
-          }
-        : null
+      player: this.rawInfo(),
+      room: room?.rawInfo()
     });
   }
   oncreate(data: MessageData<"create">) {
@@ -121,13 +125,13 @@ export class Player {
   }
   onmessage(data: MessageData<"message">) {
     const { to, content } = data;
-    const { userId, roomId, status: playerStatus, avatarUrl, nickname } = this;
+    const { roomId } = this;
     if (!roomId) return;
     const room = Room.rooms.get(roomId);
     if (!room) return;
-    const { status, owner, messages } = room;
+    const { messages } = room;
     room?.messages.push({
-      messageFrom: { status: playerStatus, id: userId, avatarUrl, nickname },
+      messageFrom: this.rawInfo(),
       to,
       timestamp: Date.now(),
       message: content || ""
@@ -135,30 +139,20 @@ export class Player {
     room?.members.forEach((item) =>
       item.send({
         type: "message",
-        room: {
-          roomId,
-          status,
-          owner,
-          members: room.getMembers()
-        },
+        room: room.rawInfo(),
         messages
       })
     );
   }
   ongetMessage() {
-    const { userId, roomId, status: playerStatus, avatarUrl, nickname } = this;
+    const { roomId } = this;
     if (!roomId) return;
     const room = Room.rooms.get(roomId);
     if (!room) return;
-    const { status, owner, messages } = room;
+    const { messages } = room;
     this.send({
       type: "message",
-      room: {
-        roomId,
-        status,
-        owner,
-        members: room.getMembers()
-      },
+      room: room.rawInfo(),
       messages
     });
     return;
@@ -166,19 +160,41 @@ export class Player {
   oncharacter(data: MessageData<"character">) {
     const { content } = data;
     // 用户选择角色逻辑
-    if (content && content.characterId) {
+    if (content && content.character) {
+      this.character = content.character;
+      this.room?.members.forEach((item) => {
+        item.send<"character">({ type: "character", room: this.room?.rawInfo() || null, content });
+      });
       return;
     }
   }
-  onround(data: MessageData<"round">) {
+  onround() {
     // 回合结束，将当前回合指向下一个玩家
+    if (!this.roomId) return;
+    const room = Room.rooms.get(this.roomId);
+    if (!room) return;
+    const currRound = this.userId;
+    const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
+    const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+    room.currRound === nextRound;
+    room.members.forEach((item) => {
+      if (nextRound) {
+        item.sendRound(nextRound);
+      } else if (room.gameStep === "round") {
+        item.sendVote();
+      }
+    });
   }
-  onvote() {}
+  onvote(data: MessageData<"vote">) {}
   sendCharacterList() {
+    const list: CharacterProp[] = [];
+    MaterialCache.characterList.forEach((item) => {
+      list.push(item as unknown as CharacterProp);
+    });
     this.send<"character">({
       type: "character",
       content: {
-        characteList: []
+        characteList: list
       }
     });
   }
@@ -187,7 +203,8 @@ export class Player {
     const room = Room.rooms.get(this.roomId);
     if (!room) return;
     room.currRound = currRound;
-    this.send<"round">({ type: "round", content: currRound });
+    const currRoundPlayer = [...room.members].filter((item) => item.userId === currRound)[0] || null;
+    this.send<"round">({ type: "round", content: currRoundPlayer?.rawInfo() });
     TimerTask.register({
       date: new Date(Date.now() + 1000 * 60),
       action: () => {
@@ -197,7 +214,7 @@ export class Player {
           room.members.forEach((item) => {
             if (nextRound) {
               item.sendRound(nextRound);
-            } else {
+            } else if (room.gameStep === "round") {
               item.sendVote();
             }
           });
@@ -209,7 +226,24 @@ export class Player {
     if (!this.roomId) return;
     const room = Room.rooms.get(this.roomId);
     if (!room) return;
+    room.gameStep = "vote";
+    this.send({ type: "vote" });
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 60),
+      action: () => {
+        // 投票结束后游戏还没结束，继续进入玩家回合
+        if (room.gameStep === "vote") {
+          room.gameStep = "round";
+          const currRound = [...room.members][0]?.userId;
+          room.members.forEach((item) => {
+            item.sendRound(currRound);
+          });
+        }
+      }
+    });
   }
+  // 判断当前玩家状态
+  checkStatus() {}
   // 客户端返回错误
   onerror() {}
   onexit() {
