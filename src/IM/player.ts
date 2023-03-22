@@ -43,13 +43,14 @@ export class Player {
     player[`on${type}`]?.call(player, data as MessageData<typeof type>);
   }
   private rawInfo() {
-    const { userId, status, avatarUrl, nickname, character } = this;
+    const { userId, status, avatarUrl, nickname, character, cardList } = this;
     return {
       status,
       id: userId,
       avatarUrl,
       nickname,
-      character
+      character,
+      cardList
     } as PlayerInfo;
   }
   oninfo() {
@@ -97,6 +98,22 @@ export class Player {
         room.gameStep = "character";
         room.members.forEach((item) => {
           item.sendCharacterList();
+        });
+      }
+    });
+    // 给还没选角色的玩家自动分配角色
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 60),
+      action: () => {
+        room.members.forEach((item) => {
+          if (!item.character) {
+            let random = Math.floor(Math.random() * MaterialCache.characterList.size);
+            let characterValue = Array.from(MaterialCache.characterList)[random];
+            if (characterValue[1]) {
+              item.character = characterValue[1]?.dataValues;
+              item.cardList = item.sendCard(item.character.health);
+            }
+          }
         });
       }
     });
@@ -165,6 +182,13 @@ export class Player {
       this.room?.members.forEach((item) => {
         item.send<"character">({ type: "character", room: this.room?.rawInfo() || null, content });
       });
+      const cardNumber = content?.character?.health;
+      TimerTask.register({
+        date: new Date(Date.now() + 1000 * 5),
+        action: () => {
+          this.cardList = this.sendCard(cardNumber); // 起始手牌派发
+        }
+      });
       return;
     }
   }
@@ -186,6 +210,21 @@ export class Player {
     });
   }
   onvote(data: MessageData<"vote">) {}
+  onskill(data: MessageData<"skill">) {}
+  oncard(data: MessageData<"card">) {
+    const { content } = data;
+    if (!content?.card || !content?.to) return;
+    this.room?.members.forEach((item) => {
+      if (item.userId === content.to) {
+      }
+    });
+  }
+  ondrop(data: MessageData<"drop">) {
+    const { content } = data;
+    if (content) {
+      this.cardList = content;
+    }
+  }
   sendCharacterList() {
     const list: CharacterProp[] = [];
     MaterialCache.characterList.forEach((item) => {
@@ -205,12 +244,27 @@ export class Player {
     room.currRound = currRound;
     const currRoundPlayer = [...room.members].filter((item) => item.userId === currRound)[0] || null;
     this.send<"round">({ type: "round", content: currRoundPlayer?.rawInfo() });
+    // 回合开始后，给玩家发牌
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 3),
+      action: () => {
+        if (this.userId === currRound) {
+          this.cardList.push(...this.sendCard(2));
+        }
+      }
+    });
+    // 一分钟后开始开始下一个玩家的回合
     TimerTask.register({
       date: new Date(Date.now() + 1000 * 60),
       action: () => {
         if (room.currRound === currRound) {
           const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
-          const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+          const currentPlayer = [...room.members][currRoundIndex + 1] || null;
+          const nextRound = currentPlayer?.userId || null;
+          if (currentPlayer?.character && currentPlayer.cardList.length > currentPlayer.character?.health) {
+            const dropNumber = currentPlayer.cardList.length - currentPlayer.character.health;
+            currentPlayer.cardList.splice(0, dropNumber);
+          }
           room.members.forEach((item) => {
             if (nextRound) {
               item.sendRound(nextRound);
@@ -242,8 +296,32 @@ export class Player {
       }
     });
   }
+  sendCard(cardNumber: number) {
+    const cards: CardProp[] = [];
+    for (let index = 0; index < cardNumber; index++) {
+      let random = Math.floor(Math.random() * MaterialCache.cardList.size);
+      let item = Array.from(MaterialCache.cardList)[random];
+      item[1]?.dataValues && cards.push(item[1].dataValues);
+    }
+    this.send({ type: "card", content: { cards: [...this.cardList, ...cards] } });
+    return cards;
+  }
   // 判断当前玩家状态
-  checkStatus() {}
+  checkStatus(skill: SkillProp) {
+    if (skill.effectType === "characterEffect") {
+      if (!this.character) return;
+      this.character.health += skill.health || 0;
+      this.character.attack += skill.attack || 0;
+      this.character.defense += skill.defense || 0;
+      this.character.dodge += skill.dodge || 0;
+      if (this.character.health < 0) {
+        this.cardList = [];
+        this.status = "out";
+      }
+    }
+  }
+  checkCard(skill: SkillProp) {}
+  checkRound(skill: SkillProp) {}
   // 客户端返回错误
   onerror() {}
   onexit() {

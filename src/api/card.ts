@@ -1,5 +1,6 @@
 import express, { RequestHandler } from "express";
 import { v1 } from "uuid";
+import { MaterialCache } from "../cache/materail";
 import { CardModel } from "../db/Card.model";
 import { SkillModel } from "../db/Skill.model";
 
@@ -9,7 +10,26 @@ class Card {
   list: RequestHandler = async (req, res, next) => {
     try {
       const data = await CardModel.findAll({ include: SkillModel });
-      res.json({ data });
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  };
+  get: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = req.query as { id: string };
+      const cards = await CardModel.findOne({ where: { id }, include: SkillModel });
+      res.json({ data: cards });
+    } catch (e) {
+      next(e);
+    }
+  };
+  delete: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, SkillId } = req.body as CardProp;
+      await CardModel.destroy({ where: { id } });
+      await SkillModel.destroy({ where: { id: SkillId } });
+      res.json({ data: null });
     } catch (e) {
       next(e);
     }
@@ -27,7 +47,8 @@ class Card {
         },
         { include: SkillModel }
       );
-      res.json({ data: card });
+      MaterialCache.cardList.set(id, card);
+      res.json({ data: { ...card.dataValues } });
     } catch (e) {
       next(e);
     }
@@ -53,6 +74,8 @@ class Card {
 const card = new Card();
 
 router.get("/list", card.list);
+router.get("/get", card.get);
+router.delete("/delete", card.delete);
 router.post("/create", card.create);
 router.post("/update", card.update);
 

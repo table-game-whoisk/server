@@ -8,7 +8,7 @@ export class Room {
   owner: userId | null = null;
   status: roomStatus = "ready";
   messages: Message[] = [];
-  gameStep: Game.gameStep | null = null;
+  gameStep: gameStep | null = null;
   currRound: userId | null = null;
 
   static rooms = new Map<roomId, Room>();

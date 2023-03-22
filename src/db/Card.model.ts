@@ -21,6 +21,9 @@ export function initCardModel() {
       describe: {
         type: DataTypes.STRING
       },
+      trigger: {
+        type: DataTypes.STRING
+      },
       SkillId: {
         type: DataTypes.STRING
       }
