@@ -143,7 +143,7 @@ declare interface RoomInfo {
 
 declare interface SelecteCharacter {
   character?: CharacterProp;
-  characteList?: CharacterProp[];
+  characterList?: CharacterProp[];
 }
 
 declare interface MessageData<T extends messageType = "messages"> {

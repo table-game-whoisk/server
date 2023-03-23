@@ -124,7 +124,7 @@ export class Player {
         room.gameStep = "round";
         const currRound = [...room.members][0]?.userId;
         room.members.forEach((item) => {
-          item.sendRound(currRound);
+          Player.sendRound(currRound, item);
         });
       }
     });
@@ -180,7 +180,7 @@ export class Player {
     if (content && content.character) {
       this.character = content.character;
       this.room?.members.forEach((item) => {
-        item.send<"character">({ type: "character", room: this.room?.rawInfo() || null, content });
+        item.oninfo();
       });
       const cardNumber = content?.character?.health;
       TimerTask.register({
@@ -203,14 +203,15 @@ export class Player {
     room.currRound === nextRound;
     room.members.forEach((item) => {
       if (nextRound) {
-        item.sendRound(nextRound);
-      } else if (room.gameStep === "round") {
+        Player.sendRound(nextRound, item);
+      } else {
         item.sendVote();
       }
     });
   }
   onvote(data: MessageData<"vote">) {}
   onskill(data: MessageData<"skill">) {}
+  // 使用卡牌
   oncard(data: MessageData<"card">) {
     const { content } = data;
     if (!content?.card || !content?.to) return;
@@ -219,37 +220,39 @@ export class Player {
       }
     });
   }
+  // 弃牌
   ondrop(data: MessageData<"drop">) {
     const { content } = data;
     if (content) {
       this.cardList = content;
     }
   }
+  // 发送角色列表
   sendCharacterList() {
     const list: CharacterProp[] = [];
-    MaterialCache.characterList.forEach((item) => {
-      list.push(item as unknown as CharacterProp);
+    MaterialCache.characterList.forEach(({ dataValues }) => {
+      list.push(dataValues);
     });
     this.send<"character">({
       type: "character",
       content: {
-        characteList: list
+        characterList: list
       }
     });
   }
-  sendRound(currRound: userId) {
-    if (!this.roomId) return;
-    const room = Room.rooms.get(this.roomId);
+  static sendRound(currRound: userId, player: Player) {
+    if (!player.roomId) return;
+    const room = Room.rooms.get(player.roomId);
     if (!room) return;
     room.currRound = currRound;
     const currRoundPlayer = [...room.members].filter((item) => item.userId === currRound)[0] || null;
-    this.send<"round">({ type: "round", content: currRoundPlayer?.rawInfo() });
+    player.send<"round">({ type: "round", content: currRoundPlayer?.rawInfo() });
     // 回合开始后，给玩家发牌
     TimerTask.register({
       date: new Date(Date.now() + 1000 * 3),
       action: () => {
-        if (this.userId === currRound) {
-          this.cardList.push(...this.sendCard(2));
+        if (player.userId === currRound) {
+          player.cardList.push(...player.sendCard(2));
         }
       }
     });
@@ -259,42 +262,43 @@ export class Player {
       action: () => {
         if (room.currRound === currRound) {
           const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
-          const currentPlayer = [...room.members][currRoundIndex + 1] || null;
-          const nextRound = currentPlayer?.userId || null;
-          if (currentPlayer?.character && currentPlayer.cardList.length > currentPlayer.character?.health) {
-            const dropNumber = currentPlayer.cardList.length - currentPlayer.character.health;
-            currentPlayer.cardList.splice(0, dropNumber);
+          const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+          if (currRoundPlayer?.character && currRoundPlayer.cardList.length > currRoundPlayer.character?.health) {
+            const dropNumber = currRoundPlayer.cardList.length - currRoundPlayer.character.health;
+            currRoundPlayer.cardList.splice(0, dropNumber);
+            currRoundPlayer.oninfo();
           }
-          room.members.forEach((item) => {
-            if (nextRound) {
-              item.sendRound(nextRound);
-            } else if (room.gameStep === "round") {
-              item.sendVote();
-            }
-          });
+          if (nextRound) {
+            Player.sendRound(nextRound, player);
+          } else {
+            player.sendVote();
+          }
         }
       }
     });
   }
   sendVote() {
-    if (!this.roomId) return;
-    const room = Room.rooms.get(this.roomId);
-    if (!room) return;
-    room.gameStep = "vote";
-    this.send({ type: "vote" });
-    TimerTask.register({
-      date: new Date(Date.now() + 1000 * 60),
-      action: () => {
-        // 投票结束后游戏还没结束，继续进入玩家回合
-        if (room.gameStep === "vote") {
-          room.gameStep = "round";
-          const currRound = [...room.members][0]?.userId;
-          room.members.forEach((item) => {
-            item.sendRound(currRound);
-          });
-        }
+    const { roomId } = this;
+    if (!roomId) return;
+    const room = Room.rooms.get(roomId);
+    if (room) {
+      if (room.gameStep === "round") {
+        room.gameStep = "vote";
+        this.send({ type: "vote" });
+        TimerTask.register({
+          date: new Date(Date.now() + 1000 * 60),
+          action: () => {
+            if (room.gameStep === "vote") {
+              room.gameStep = "round";
+              const currRound = [...room.members][0]?.userId;
+              room.members.forEach((item) => {
+                Player.sendRound(currRound, item);
+              });
+            }
+          }
+        });
       }
-    });
+    }
   }
   sendCard(cardNumber: number) {
     const cards: CardProp[] = [];
@@ -307,16 +311,16 @@ export class Player {
     return cards;
   }
   // 判断当前玩家状态
-  checkStatus(skill: SkillProp) {
+  static checkStatus(skill: SkillProp, player: Player) {
     if (skill.effectType === "characterEffect") {
-      if (!this.character) return;
-      this.character.health += skill.health || 0;
-      this.character.attack += skill.attack || 0;
-      this.character.defense += skill.defense || 0;
-      this.character.dodge += skill.dodge || 0;
-      if (this.character.health < 0) {
-        this.cardList = [];
-        this.status = "out";
+      if (!player.character) return;
+      player.character.health += skill.health || 0;
+      player.character.attack += skill.attack || 0;
+      player.character.defense += skill.defense || 0;
+      player.character.dodge += skill.dodge || 0;
+      if (player.character.health < 0) {
+        player.cardList = [];
+        player.status = "out";
       }
     }
   }
@@ -324,6 +328,7 @@ export class Player {
   checkRound(skill: SkillProp) {}
   // 客户端返回错误
   onerror() {}
+
   onexit() {
     if (!this.roomId) return;
     const room = Room.rooms.get(this.roomId);
