@@ -3,23 +3,37 @@ import { MaterialCache } from "../cache/materail";
 import { TimerTask } from "../utils/timerTask";
 import { Room } from "./room";
 
+const avatarUrls = [
+  "http://img.520touxiang.com/uploads/allimg/2018122110/1hnczuozxys.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/n0xyfe52qbn.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/0jrrouozrw3.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/fk5b0xd02gb.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/5w5cvnax4b4.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/fi4yv0dnddb.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/w50cfhehfmm.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/32eykkfknsl.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/3varmbmpm45.jpg",
+  "http://img.520touxiang.com/uploads/allimg/2018122110/xom43z0t1b4.jpg"
+];
+
+const nicknames = ["jay", "yoyo", "leo", "kimi", "ben", "julia", "kon", "han", "allen", "beep"];
+
 export class Player {
   avatarUrl: string | null = null;
   nickname: string | null = null;
   status: playerStatus = "online";
-  userId: userId;
+  id: userId;
   roomId: string | null = null;
   room: Room | null = null;
   ws: WebSocket.WebSocket | null = null;
   character: CharacterProp | null = null;
   cardList: CardProp[] = [];
 
-  constructor({ userId, avatarUrl, nickname }: { userId: userId; avatarUrl: string | null; nickname: string | null }) {
-    this.userId = userId;
-    this.avatarUrl = avatarUrl || null;
-    this.nickname = nickname || null;
+  constructor(id: userId) {
+    this.id = id;
+    this.avatarUrl = avatarUrls[Math.floor(Math.random() * 10)];
+    this.nickname = nicknames[Math.floor(Math.random() * 10)];
   }
-
   startListen(ws: WebSocket.WebSocket) {
     if (this.room?.status === "playing") {
       this.status = "playing";
@@ -33,7 +47,7 @@ export class Player {
     this.oninfo();
   }
   private send<T extends messageType>(data: MessageData<T>) {
-    this.ws?.send(JSON.stringify({ ...data, from: this.userId, timestamp: Date.now() }));
+    this.ws?.send(JSON.stringify({ ...data, timestamp: Date.now() }));
   }
   // ws 错误
   private handleError(err: Error) {}
@@ -42,11 +56,11 @@ export class Player {
     const { type } = data;
     player[`on${type}`]?.call(player, data as MessageData<typeof type>);
   }
-  private rawInfo() {
-    const { userId, status, avatarUrl, nickname, character, cardList } = this;
+  rawInfo() {
+    const { id, status, avatarUrl, nickname, character, cardList } = this;
     return {
       status,
-      id: userId,
+      id,
       avatarUrl,
       nickname,
       character,
@@ -54,7 +68,7 @@ export class Player {
     } as PlayerInfo;
   }
   oninfo() {
-    const { room, roomId } = this;
+    const { room } = this;
     this.send({
       type: "info",
       player: this.rawInfo(),
@@ -64,19 +78,20 @@ export class Player {
   oncreate(data: MessageData<"create">) {
     const { roomId } = data;
     Room.createRoom(roomId, this);
+    this.oninfo();
   }
   onenter(data: MessageData<"enter">) {
     const { roomId } = data;
     Room.enterRoom(roomId, this);
   }
-  onstart() {
+  onstart(data?: MessageData<"start">) {
     const { room } = this;
     if (!room) {
       this.sendError("当前还未加入任何房间");
       return;
     }
     const isAllready = [...(room?.members || [])].every((item) => item.status === "ready");
-    if (room.owner !== this.userId) {
+    if (room.owner !== this.id) {
       this.sendError("只有房主才能开始游戏");
       return;
     } else if (!isAllready) {
@@ -122,14 +137,14 @@ export class Player {
       date: new Date(Date.now() + 1000 * 63),
       action: () => {
         room.gameStep = "round";
-        const currRound = [...room.members][0]?.userId;
+        const currRound = [...room.members][0]?.id;
         room.members.forEach((item) => {
           Player.sendRound(currRound, item);
         });
       }
     });
   }
-  onready() {
+  onready(data?: MessageData<"ready">) {
     const { room } = this;
     if (!room) {
       this.sendError("当前还未加入任何房间");
@@ -161,7 +176,7 @@ export class Player {
       })
     );
   }
-  ongetMessage() {
+  ongetMessage(data?: MessageData<"getMessage">) {
     const { roomId } = this;
     if (!roomId) return;
     const room = Room.rooms.get(roomId);
@@ -192,14 +207,14 @@ export class Player {
       return;
     }
   }
-  onround() {
+  onround(data?: MessageData<"round">) {
     // 回合结束，将当前回合指向下一个玩家
     if (!this.roomId) return;
     const room = Room.rooms.get(this.roomId);
     if (!room) return;
-    const currRound = this.userId;
-    const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
-    const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+    const currRound = this.id;
+    const currRoundIndex = [...room.members].findIndex((item) => item.id === currRound);
+    const nextRound = [...room.members][currRoundIndex + 1]?.id || null;
     room.currRound === nextRound;
     room.members.forEach((item) => {
       if (nextRound) {
@@ -216,7 +231,7 @@ export class Player {
     const { content } = data;
     if (!content?.card || !content?.to) return;
     this.room?.members.forEach((item) => {
-      if (item.userId === content.to) {
+      if (item.id === content.to) {
       }
     });
   }
@@ -245,13 +260,13 @@ export class Player {
     const room = Room.rooms.get(player.roomId);
     if (!room) return;
     room.currRound = currRound;
-    const currRoundPlayer = [...room.members].filter((item) => item.userId === currRound)[0] || null;
+    const currRoundPlayer = [...room.members].filter((item) => item.id === currRound)[0] || null;
     player.send<"round">({ type: "round", content: currRoundPlayer?.rawInfo() });
     // 回合开始后，给玩家发牌
     TimerTask.register({
       date: new Date(Date.now() + 1000 * 3),
       action: () => {
-        if (player.userId === currRound) {
+        if (player.id === currRound) {
           player.cardList.push(...player.sendCard(2));
         }
       }
@@ -261,8 +276,8 @@ export class Player {
       date: new Date(Date.now() + 1000 * 60),
       action: () => {
         if (room.currRound === currRound) {
-          const currRoundIndex = [...room.members].findIndex((item) => item.userId === currRound);
-          const nextRound = [...room.members][currRoundIndex + 1]?.userId || null;
+          const currRoundIndex = [...room.members].findIndex((item) => item.id === currRound);
+          const nextRound = [...room.members][currRoundIndex + 1]?.id || null;
           if (currRoundPlayer?.character && currRoundPlayer.cardList.length > currRoundPlayer.character?.health) {
             const dropNumber = currRoundPlayer.cardList.length - currRoundPlayer.character.health;
             currRoundPlayer.cardList.splice(0, dropNumber);
@@ -290,7 +305,7 @@ export class Player {
           action: () => {
             if (room.gameStep === "vote") {
               room.gameStep = "round";
-              const currRound = [...room.members][0]?.userId;
+              const currRound = [...room.members][0]?.id;
               room.members.forEach((item) => {
                 Player.sendRound(currRound, item);
               });

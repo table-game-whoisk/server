@@ -1,6 +1,10 @@
 type userId = string;
 type roomId = string;
 
+declare interface UserProp {
+  id: string;
+}
+
 declare interface CharacterProp {
   id: string;
   name: string;
@@ -119,19 +123,19 @@ declare interface PlayerInfo {
   nickname: string | null;
 }
 
+declare interface RoomInfo {
+  id: string | null;
+  status: string | null;
+  owner: string | null;
+  gameStep: Game.gameStep | null;
+  members: PlayerInfo[] | null;
+}
+
 declare interface Message {
   timestamp: number;
   messageFrom: PlayerInfo;
   to?: userId | userId[] | undefined;
   message: string;
-}
-
-declare interface RoomInfo {
-  roomId: string | null;
-  status: string | null;
-  owner: string | null;
-  gameStep: Game.gameStep | null;
-  members: PlayerInfo[] | null;
 }
 
 declare interface SelecteCharacter {

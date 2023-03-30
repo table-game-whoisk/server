@@ -3,7 +3,7 @@ import { logger } from "../utils/logger";
 import { Player } from "./player";
 
 export class Room {
-  roomId: roomId | null = null;
+  id: roomId | null = null;
   members = new Set<Player>();
   owner: userId | null = null;
   status: roomStatus = "ready";
@@ -17,21 +17,15 @@ export class Room {
   }
   getMembers() {
     if (this.members.size > 0) {
-      return [...this.members].map(({ userId, status, nickname, avatarUrl, character }) => ({
-        id: userId,
-        status,
-        nickname,
-        avatarUrl,
-        character
-      }));
+      return [...this.members].map((player) => player.rawInfo());
     }
     return null;
   }
   rawInfo() {
-    const { roomId, owner, status, messages, gameStep } = this;
-    if (!roomId) return null;
+    const { id, owner, status, messages, gameStep } = this;
+    if (!id) return null;
     return {
-      roomId,
+      id,
       owner,
       status,
       members: this.getMembers(),
@@ -47,8 +41,8 @@ export class Room {
       player.sendError("房间已存在");
     } else {
       const room = new Room();
-      room.roomId = roomId;
-      room.owner = player.userId;
+      room.id = roomId;
+      room.owner = player.id;
       Room.rooms.set(roomId, room);
       Room.enterRoom(roomId, player);
     }
@@ -81,9 +75,9 @@ export class Room {
     if (room?.members.size === 0) {
       Room.destroyRoom(roomId, room);
     } else {
-      if (room?.owner === player.userId) {
+      if (room?.owner === player.id) {
         const newPlayer = [...room.members][0];
-        room.owner = newPlayer.userId;
+        room.owner = newPlayer.id;
       }
     }
     // 重新任命房主
