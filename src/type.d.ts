@@ -1,13 +1,6 @@
 type userId = string;
 type roomId = string;
 
-// DB
-declare interface UserProp {
-  id: string;
-  ip: string;
-  nickname?: string;
-}
-
 declare interface CharacterProp {
   id: string;
   name: string;

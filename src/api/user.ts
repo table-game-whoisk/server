@@ -9,15 +9,8 @@ const router = express.Router();
 class User {
   createUser: RequestHandler = async (req, res, next) => {
     try {
-      let id = "";
-      const { nickname } = req.body;
-      const ip = req.ip;
-      id = v1();
-      const user = await UserModel.create({
-        id,
-        nickname,
-        ip
-      });
+      const id = v1();
+      const user = await UserModel.create({ id });
       UserCache.list.set(id, user);
       res.json({ data: user });
     } catch (e) {
@@ -26,8 +19,8 @@ class User {
   };
   userInfo: RequestHandler = async (req, res, next) => {
     try {
-      const ip = req.ip;
-      const user = await UserModel.findOne({ where: { ip } });
+      const { id } = req.query as { id: string };
+      const user = await UserModel.findOne({ where: { id } });
       user ? res.json({ data: user }) : res.json({ data: null });
     } catch (e) {
       next(e);

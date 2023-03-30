@@ -11,12 +11,6 @@ export function initUser() {
         unique: true,
         allowNull: false,
         primaryKey: true
-      },
-      nickname: {
-        type: DataTypes.STRING
-      },
-      ip: {
-        type: DataTypes.STRING
       }
     },
     {
