@@ -46,7 +46,7 @@ export class Player {
     this.ws = ws;
     this.oninfo();
   }
-  private send<T extends messageType>(data: MessageData<T>) {
+  send<T extends messageType>(data: MessageData<T>) {
     this.ws?.send(JSON.stringify({ ...data, timestamp: Date.now() }));
   }
   // ws 错误
@@ -114,6 +114,7 @@ export class Player {
         room.members.forEach((item) => {
           item.sendCharacterList();
         });
+        room.sendSystemMessage("开始选择角色");
       }
     });
     // 给还没选角色的玩家自动分配角色
@@ -232,8 +233,32 @@ export class Player {
     if (!content?.card || !content?.to) return;
     this.room?.members.forEach((item) => {
       if (item.id === content.to) {
+        item.handleCardEffect(content.card!, this);
+        item.oninfo();
       }
     });
+  }
+  handleCardEffect(card: CardProp, from: Player) {
+    const { type } = card;
+    switch (type) {
+      case "action":
+        if (this.character) {
+          this.character.health = this.character.health - 1;
+        }
+        this.room?.sendSystemMessage(`${this.nickname}受到了${from.nickname}的攻击`);
+        break;
+      case "trop":
+        break;
+      case "prop":
+        const { Skill } = card;
+        Skill && this.handleSkillEffect(Skill, from);
+        break;
+      case "clue":
+        break;
+      default:
+        break;
+    }
+    this.checkStatus();
   }
   // 弃牌
   ondrop(data: MessageData<"drop">) {
@@ -326,21 +351,31 @@ export class Player {
     return cards;
   }
   // 判断当前玩家状态
-  static checkStatus(skill: SkillProp, player: Player) {
-    if (skill.effectType === "characterEffect") {
-      if (!player.character) return;
-      player.character.health += skill.health || 0;
-      player.character.attack += skill.attack || 0;
-      player.character.defense += skill.defense || 0;
-      player.character.dodge += skill.dodge || 0;
-      if (player.character.health < 0) {
-        player.cardList = [];
-        player.status = "out";
+  checkStatus() {
+    if (this.character) {
+      if (this.character?.health < 0) {
+        this.cardList = [];
+        this.status = "out";
+        this.room?.sendSystemMessage(`${this.nickname}被淘汰了`);
       }
     }
   }
-  checkCard(skill: SkillProp) {}
-  checkRound(skill: SkillProp) {}
+  handleSkillEffect(Skill: SkillProp, from: Player) {
+    switch (Skill.effectType) {
+      case "characterEffect":
+        if (this.character) {
+          this.character.health += Skill.health || 0;
+          this.character.attack += Skill.attack || 0;
+          this.character.defense += Skill.defense || 0;
+          this.character.dodge += Skill.dodge || 0;
+        }
+        break;
+      case "cardSetpEffect":
+        break;
+      case "roundEffect":
+        break;
+    }
+  }
   // 客户端返回错误
   onerror() {}
 

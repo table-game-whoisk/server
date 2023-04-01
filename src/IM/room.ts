@@ -85,4 +85,25 @@ export class Room {
   static destroyRoom(roomId: string, room: Room) {
     Room.rooms.delete(roomId);
   }
+  sendSystemMessage(message: string) {
+    this.messages.push({
+      timestamp: Date.now(),
+      messageFrom: {
+        id: "0",
+        nickname: "system",
+        avatarUrl: "",
+        character: null,
+        cardList: [],
+        status: ""
+      },
+      message
+    });
+    this.members.forEach((item) =>
+      item.send({
+        type: "message",
+        room: this.rawInfo(),
+        messages: this.messages
+      })
+    );
+  }
 }
