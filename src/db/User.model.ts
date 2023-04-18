@@ -11,6 +11,14 @@ export function initUser() {
         unique: true,
         allowNull: false,
         primaryKey: true
+      },
+      avatar: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      nickname: {
+        type: DataTypes.STRING,
+        allowNull: false
       }
     },
     {

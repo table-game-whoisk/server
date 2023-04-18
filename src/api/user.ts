@@ -9,8 +9,9 @@ const router = express.Router();
 class User {
   createUser: RequestHandler = async (req, res, next) => {
     try {
+      const { nickname, avatar } = req.body as UserProp;
       const id = v1();
-      const user = await UserModel.create({ id });
+      const user = await UserModel.create({ id, nickname, avatar });
       UserCache.list.set(id, user);
       res.json({ data: user });
     } catch (e) {

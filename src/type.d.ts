@@ -3,6 +3,8 @@ type roomId = string;
 
 declare interface UserProp {
   id: string;
+  avatar: string;
+  nickname: string;
 }
 
 declare interface CharacterProp {
