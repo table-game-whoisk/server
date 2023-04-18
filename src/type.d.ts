@@ -1,5 +1,3 @@
-type userId = string;
-type roomId = string;
 
 declare interface UserProp {
   id: string;
@@ -93,78 +91,11 @@ declare interface Skill<T extends EffectType> {
 }
 
 // ws
-declare type roomStatus = "ready" | "playing";
-
-declare type playerStatus = "offline" | "online" | "ready" | "playing" | "out" | "mute";
-
 declare type EffectTarget = "self" | "anyone" | "all";
-
-declare type messageType =
-  | "info"
-  | "create"
-  | "enter"
-  | "exit"
-  | "ready"
-  | "start"
-  | "character"
-  | "round"
-  | "vote"
-  | "card"
-  | "drop"
-  | "skill"
-  | "message"
-  | "getMessage"
-  | "error";
-
-declare interface PlayerInfo {
-  id: string;
-  status: string;
-  avatarUrl: string | null;
-  character: CharacterProp | null;
-  cardList: CardProp[];
-  nickname: string | null;
-}
-
-declare interface RoomInfo {
-  id: string | null;
-  status: string | null;
-  owner: string | null;
-  gameStep: Game.gameStep | null;
-  members: PlayerInfo[] | null;
-}
-
-declare interface Message {
-  timestamp: number;
-  messageFrom: PlayerInfo;
-  to?: userId | userId[] | undefined;
-  message: string;
-}
 
 declare interface SelecteCharacter {
   character?: CharacterProp;
   characterList?: CharacterProp[];
-}
-
-declare interface MessageData<T extends messageType = "messages"> {
-  type: messageType;
-  player?: PlayerInfo;
-  room?: RoomInfo | null;
-  timestamp?: number;
-  to?: userId | userId[];
-  msg?: string;
-  roomId?: roomId;
-  content?: T extends "messages"
-    ? string
-    : T extends "character"
-    ? SelecteCharacter
-    : T extends "round"
-    ? PlayerInfo
-    : T extends "card"
-    ? DealCard
-    : T extends "drop"
-    ? CardProp[]
-    : string;
-  messages?: Message[];
 }
 
 declare interface DealCard {
@@ -176,14 +107,4 @@ declare interface DealCard {
 declare interface Task {
   date: Date;
   action: () => void;
-}
-
-// test
-namespace Test {
-  declare interface Listener {
-    userId: string;
-    socket: WebSocket.websocket;
-    message: () => Promise<MessageData>;
-    send: (message: MessageData) => void;
-  }
 }

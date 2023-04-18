@@ -5,21 +5,30 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <style>
+      .flex {
+        display: flex;
+        align-items: center;
+      }
+    </style>
   </head>
   <body>
     <div>
-      <div>
-        <img src="" alt="" id="avatar" />
+      <div class="flex">
+        <img height="50px" width="50px" src="" alt="" id="avatar" />
+        <div style="margin-left: 30px">
+          <div>
+            nickname: <input type="text" id="nickname" />
+            <button id="connect">connect</button>
+            <button id="close">close</button>
+          </div>
+          <div>
+            roomid: <input type="text" id="roomId" /> <button id="joinRoom">加入房间</button>
+            <button id="createRoom">创建房间</button>
+          </div>
+        </div>
       </div>
-      <div>
-        nickname: <input type="text" id="nickname" />
-        <button id="connect">connect</button>
-        <button id="close">close</button>
-      </div>
-      <div>roomid: <input type="text" id="roomId" /> <button id="joinRoom">加入房间</button></div>
-      <div>
-        <button id="createRoom">创建房间</button>
-      </div>
+
       <div>
         <button id="ready">ready</button>
         <button id="start">start</button>
@@ -50,8 +59,8 @@
       function query(id) {
         return document.getElementById(id);
       }
-      query("avatar").setAttribute("src", avatarUrl);
 
+      query("avatar").setAttribute("src", avatarUrl);
       function generateRandomString(length) {
         const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         let result = "";
@@ -62,9 +71,9 @@
       }
 
       query("connect").onclick = () => {
-        const userId = generateRandomString(8);
+        const id = generateRandomString(8);
         const nickname = query("nickname").value || generateRandomString(8);
-        ws = new WebSocket(`ws://192.168.3.8:5000?userId=${userId}&nickname=${nickname}&avatarUrl=${avatarUrl}`);
+        ws = new WebSocket(`ws://192.168.3.8:5000?id=${id}&nickname=${nickname}&avatar=${avatarUrl}`);
         ws.onopen = () => {
           console.log("Connection open ...");
           heartcheck();
@@ -104,13 +113,13 @@
         }, 1000);
       }
       query("createRoom").onclick = () => {
-        let roomId = generateRandomString(8);
-        ws && ws.send(JSON.stringify({ type: "create", roomId }));
+        let roomId =query("roomId").value ||generateRandomString(8) ;
+        ws && ws.send(JSON.stringify({ type: "createRoom", content: { id: roomId } }));
       };
       query("joinRoom").onclick = () => {
         let roomId = query("roomId").value;
         if (!roomId) return;
-        ws && ws.send(JSON.stringify({ type: "enter", roomId }));
+        ws && ws.send(JSON.stringify({ type: "joinRoom", content: { id: roomId } }));
       };
       query("ready").onclick = () => {
         ws && ws.send(JSON.stringify({ type: "ready" }));

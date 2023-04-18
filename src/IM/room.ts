@@ -1,109 +1,106 @@
 import WebSocket from "ws";
 import { logger } from "../utils/logger";
 import { Player } from "./player";
+import { Game } from "./game";
 
 export class Room {
-  id: roomId | null = null;
+  static roomList = new Map<string, Room>();
+  id: string | null = null;
   members = new Set<Player>();
-  owner: userId | null = null;
-  status: roomStatus = "ready";
+  owner: string | null = null;
+  game: Game | null = null;
+  status: roomStatus = roomStatus.ready;
+  memberCount: number = 4;
   messages: Message[] = [];
-  gameStep: gameStep | null = null;
-  currRound: userId | null = null;
 
-  static rooms = new Map<roomId, Room>();
   static findRoom(roomId: string) {
-    return Room.rooms.get(roomId);
+    return Room.roomList.get(roomId);
   }
-  getMembers() {
-    if (this.members.size > 0) {
-      return [...this.members].map((player) => player.rawInfo());
-    }
-    return null;
-  }
-  rawInfo() {
-    const { id, owner, status, messages, gameStep } = this;
-    if (!id) return null;
-    return {
-      id,
-      owner,
-      status,
-      members: this.getMembers(),
-      messages,
-      gameStep
-    } as RoomInfo;
-  }
-  // 判断游戏状态
-  checkStatus() {}
-  static createRoom(roomId: string | undefined, player: Player) {
-    if (!roomId) return;
-    if (Room.rooms.has(roomId)) {
+  static createRoom(roomId: string, number: number, player: Player) {
+    if (Room.roomList.has(roomId)) {
       player.sendError("房间已存在");
-    } else {
-      const room = new Room();
-      room.id = roomId;
-      room.owner = player.id;
-      Room.rooms.set(roomId, room);
-      Room.enterRoom(roomId, player);
+      return;
     }
+    const room = new Room();
+    room.memberCount = number;
+    room.id = roomId;
+    room.owner = player.id;
+    Room.roomList.set(roomId, room);
+    Room.enterRoom(roomId, player);
   }
-  static enterRoom(roomId: roomId | undefined, player: Player) {
-    if (!roomId) return;
+  static enterRoom(roomId: string, player: Player) {
     let room = Room.findRoom(roomId);
     if (!room) {
       player.sendError("房间不存在");
       return;
     }
-    if (room.status === "playing") {
+    if (room.status === roomStatus.playing) {
       player.sendError("该房间已开始游戏");
       return;
     }
-    if (room.members.size < 10) {
+    if (room.members.size < room.memberCount) {
       room.members.add(player);
-      player.roomId = roomId;
       player.room = room;
     } else {
       player.sendError("房间已满");
     }
-    room.members.forEach((p) => {
-      p.oninfo();
+    room.members.forEach((player) => {
+      player.sendInfo();
     });
   }
-  static exitRoom(roomId: roomId, player: Player) {
-    const room = Room.rooms.get(roomId);
-    room?.members.delete(player); //删掉断开的用户
+  static exitRoom(roomId: string, player: Player) {
+    const room = Room.roomList.get(roomId);
+    if (!room) return;
+    room.members.delete(player); //删掉断开的用户
     if (room?.members.size === 0) {
       Room.destroyRoom(roomId, room);
     } else {
-      if (room?.owner === player.id) {
+      // 重新任命房主
+      if (room.owner === player.id) {
         const newPlayer = [...room.members][0];
         room.owner = newPlayer.id;
       }
+      room.members.forEach((player) => player.sendInfo());
     }
-    // 重新任命房主
   }
   static destroyRoom(roomId: string, room: Room) {
-    Room.rooms.delete(roomId);
+    Room.roomList.delete(roomId);
   }
-  sendSystemMessage(message: string) {
-    this.messages.push({
-      timestamp: Date.now(),
-      messageFrom: {
-        id: "0",
-        nickname: "system",
-        avatarUrl: "",
-        character: null,
-        cardList: [],
-        status: ""
-      },
-      message
+  static start(roomId: string) {
+    const room = Room.findRoom(roomId);
+    if (!room) return;
+    if (!room.game) {
+      room.game = new Game(room);
+    }
+    room.setRoomStatus(roomStatus.playing);
+  }
+
+  getMembers(): PlayerInfo[] | null {
+    if (this.members.size > 0) {
+      return [...this.members].map((player) => player.rawInfo());
+    }
+    return null;
+  }
+  rawInfo(): RoomInfo | null {
+    const { id, owner, messages, status } = this;
+    if (!id) return null;
+    return {
+      id,
+      owner,
+      members: this.getMembers(),
+      messageList: messages,
+      status
+    };
+  }
+  setRoomStatus(status: roomStatus) {
+    this.status = status;
+    this.members.forEach((player) => {
+      player.sendInfo();
     });
-    this.members.forEach((item) =>
-      item.send({
-        type: "message",
-        room: this.rawInfo(),
-        messages: this.messages
-      })
-    );
+  }
+  onMessage(data: MessageData<messageType.message>) {
+    const { content } = data;
+    this?.messages.push(content);
+    this.members.forEach((player) => player.sendInfo());
   }
 }
