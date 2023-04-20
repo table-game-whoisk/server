@@ -1,5 +1,3 @@
-import WebSocket from "ws";
-import { logger } from "../utils/logger";
 import { Player } from "./player";
 import { Game } from "./game";
 
@@ -98,28 +96,23 @@ export class Room {
       player.sendInfo();
     });
   }
-  onMessage(data: ReceiveData<messageType.message>, messageFrom: PlayerInfo) {
+  onMessage(data: ReceiveData<messageType.message>, player?: Player) {
     const { content } = data;
     if (!content) return;
+    if (player && this.game?.checkMessage(content, player)) return;
     this?.messages.push({
       timestamp: Date.now(),
-      messageFrom,
-      message: content
-    });
-    this.members.forEach((player) => player.sendInfo());
-  }
-  roomNotice(message: string) {
-    this.onMessage(
-      {
-        content: message,
-        type: messageType.message
-      },
-      {
+      messageFrom: player?.rawInfo() || {
         id: "0",
         nickname: "system",
         avatar: null,
         status: ""
-      }
-    );
+      },
+      message: content
+    });
+    this.members.forEach((player) => player.sendInfo());
+  }
+  roomNotice(text: string) {
+    this.onMessage({ type: messageType.message, content: text });
   }
 }

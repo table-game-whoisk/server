@@ -8,7 +8,8 @@ declare const enum PlayerStatus {
   offline = "offline",
   online = "online",
   ready = "ready",
-  playing = "playing"
+  playing = "playing",
+  end = "end"
 }
 declare interface PlayerInfo {
   id: string;
