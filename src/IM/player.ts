@@ -1,8 +1,9 @@
 import WebSocket from "ws";
-import { MaterialCache } from "../cache/materail";
+// import { MaterialCache } from "../cache/materail";
 import { TimerTask } from "../utils/timerTask";
 import { Room } from "./room";
 import { logger } from "../utils/logger";
+import { Character } from "./game";
 export class Player {
   id: string;
   avatar: string;
@@ -10,9 +11,7 @@ export class Player {
   status: PlayerStatus = PlayerStatus.offline;
   ws: WebSocket.WebSocket | null = null;
   room: Room | null = null;
-
-  // character: CharacterProp | null = null;
-  // cardList: CardProp[] = [];
+  character: Character | null = null;
 
   constructor(info: UserProp) {
     const { id, nickname, avatar } = info;
@@ -20,27 +19,29 @@ export class Player {
     this.nickname = nickname;
     this.avatar = avatar;
   }
-  static handleMessage<T extends messageType>(data: MessageData<T>, player: Player) {
-    const { type } = data;
-    switch (type) {
+
+  static handleMessage<T extends messageType>(data: ReceiveData<T>, player: Player) {
+    switch (data.type) {
       case messageType.info:
         player.sendInfo();
         break;
       case messageType.createRoom:
-        player.onCreateRoom(data as MessageData<messageType.createRoom>);
+        player.onCreateRoom(data as ReceiveData<messageType.createRoom>);
         break;
       case messageType.joinRoom:
-        player.onJoinRoom(data as MessageData<messageType.joinRoom>);
+        player.onJoinRoom(data as ReceiveData<messageType.joinRoom>);
         break;
       case messageType.ready:
         player.setPlayerStatus(PlayerStatus.ready);
         break;
       case messageType.start:
-        const { content } = data as MessageData<messageType.start>;
-        Room.start(content.id);
+        player.onStart(data as ReceiveData<messageType.start>);
         break;
       case messageType.message:
-        player.room?.onMessage(data as MessageData<messageType.message>);
+        player.room?.onMessage(data as ReceiveData<messageType.message>, player.rawInfo());
+        break;
+      case messageType.round:
+        player.onRound();
       default:
         break;
     }
@@ -53,7 +54,6 @@ export class Player {
       logger.error(`send message error`);
     }
   }
-
   onStartListen(ws: WebSocket.WebSocket) {
     const { room, status } = this;
     this.setPlayerStatus(room?.status === "playing" ? PlayerStatus.playing : PlayerStatus.online);
@@ -81,8 +81,8 @@ export class Player {
     }
   }
   rawInfo(): PlayerInfo {
-    const { id, status, avatar, nickname } = this;
-    return { id, status, avatar, nickname };
+    const { id, status, avatar, nickname, character } = this;
+    return { id, status, avatar, nickname, character: character?.getCharacterProp() };
   }
   sendInfo() {
     try {
@@ -96,13 +96,32 @@ export class Player {
   sendError(msg: string) {
     this.send({ type: messageType.error, content: msg });
   }
-  onCreateRoom(data: MessageData<messageType.createRoom>) {
+  onCreateRoom(data: ReceiveData<messageType.createRoom>) {
     const { content } = data;
-    Room.createRoom(content.id, content.number || 4, this);
+    content && Room.createRoom(content.id, content.number || 4, this);
   }
-  onJoinRoom(data: MessageData<messageType.joinRoom>) {
+  onJoinRoom(data: ReceiveData<messageType.joinRoom>) {
     const { content } = data;
-    Room.enterRoom(content.id, this);
+    content && Room.enterRoom(content.id, this);
+  }
+  onStart(data: ReceiveData<messageType.start>) {
+    const { content } = data;
+    content && Room.start(content.id);
+  }
+  setCharacter() {
+    this.character = new Character();
+    this.sendInfo();
+  }
+  onRound() {
+    const { room, id } = this;
+    if (!room) return;
+    const members = [...room.members];
+    if (members.length === 0) return;
+    if (room.game?.currentRound === id) { // 是否是当前玩家的回合
+      const thisIndex = members.findIndex((player) => player.id === id);
+      const nextPlayer = members[(thisIndex + 1) % members.length];
+      room.game?.setRound(nextPlayer.id);
+    }
   }
 
   // onstart(data?: MessageData<"start">) {
@@ -185,6 +204,7 @@ export class Player {
   //     return;
   //   }
   // }
+
   // onround(data?: MessageData<"round">) {
   //   // 回合结束，将当前回合指向下一个玩家
   //   if (!this.roomId) return;

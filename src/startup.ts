@@ -1,7 +1,7 @@
 import { sequelize, initModel } from "./db";
 import { logger } from "./utils/logger";
 import { UserCache } from "./cache/user";
-import { MaterialCache } from "./cache/materail";
+// import { MaterialCache } from "./cache/materail";
 
 export const startup = async () => {
   try {
@@ -13,5 +13,5 @@ export const startup = async () => {
   }
 
   await UserCache.initCache();
-  await MaterialCache.initCache();
+  // await MaterialCache.initCache();
 };

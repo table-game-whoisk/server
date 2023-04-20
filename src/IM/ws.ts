@@ -37,7 +37,7 @@ class IM {
         ws.send("pong");
         return null;
       }
-      return JSON.parse(res) as MessageData<messageType>;
+      return JSON.parse(res) as ReceiveData<messageType>;
     } catch (e) {
       return null;
     }

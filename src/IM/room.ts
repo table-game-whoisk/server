@@ -98,9 +98,28 @@ export class Room {
       player.sendInfo();
     });
   }
-  onMessage(data: MessageData<messageType.message>) {
+  onMessage(data: ReceiveData<messageType.message>, messageFrom: PlayerInfo) {
     const { content } = data;
-    this?.messages.push(content);
+    if (!content) return;
+    this?.messages.push({
+      timestamp: Date.now(),
+      messageFrom,
+      message: content
+    });
     this.members.forEach((player) => player.sendInfo());
+  }
+  roomNotice(message: string) {
+    this.onMessage(
+      {
+        content: message,
+        type: messageType.message
+      },
+      {
+        id: "0",
+        nickname: "system",
+        avatar: null,
+        status: ""
+      }
+    );
   }
 }

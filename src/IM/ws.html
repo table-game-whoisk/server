@@ -55,6 +55,7 @@
       ];
       let ws = null;
       let timer = null;
+      const id = generateRandomString(8);
       const avatarUrl = avatarUrls[Math.floor(Math.random() * 10)];
       function query(id) {
         return document.getElementById(id);
@@ -71,7 +72,6 @@
       }
 
       query("connect").onclick = () => {
-        const id = generateRandomString(8);
         const nickname = query("nickname").value || generateRandomString(8);
         ws = new WebSocket(`ws://192.168.3.8:5000?id=${id}&nickname=${nickname}&avatar=${avatarUrl}`);
         ws.onopen = () => {
@@ -92,10 +92,12 @@
             return;
           }
           console.log(JSON.parse(data));
-          const { type, messages } = JSON.parse(data);
-          if (type === "message") {
+          const { type, content } = JSON.parse(data);
+          if (type === "info") {
+            const {room} = content
+            if(!room) return
             query("messages").replaceChildren(
-              ...messages.map(({ message }) => {
+              ... room.messageList.map(({ message }) => {
                 const li = document.createElement("li");
                 li.innerHTML = message;
                 return li;
@@ -113,7 +115,7 @@
         }, 1000);
       }
       query("createRoom").onclick = () => {
-        let roomId =query("roomId").value ||generateRandomString(8) ;
+        let roomId = query("roomId").value || generateRandomString(8);
         ws && ws.send(JSON.stringify({ type: "createRoom", content: { id: roomId } }));
       };
       query("joinRoom").onclick = () => {
@@ -136,7 +138,7 @@
       };
       query("round").onclick = () => {
         if (ws) {
-          text && ws.send(JSON.stringify({ type: "round" }));
+          text && ws.send(JSON.stringify({ type: "round", content: { id } }));
         }
       };
     </script>

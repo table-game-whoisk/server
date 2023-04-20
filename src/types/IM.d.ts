@@ -10,13 +10,14 @@ declare const enum PlayerStatus {
   ready = "ready",
   playing = "playing"
 }
-
 declare interface PlayerInfo {
   id: string;
   status: string;
   avatar: string | null;
   nickname: string | null;
+  character?: CharacterProp | null;
 }
+
 // room
 declare const enum roomStatus {
   ready = "ready",
@@ -31,13 +32,6 @@ declare interface RoomInfo {
   // gameStep: Game.gameStep | null;
 }
 
-//game
-declare const enum GameStatus {
-  role = "role",
-  palying = "round",
-  end = "end"
-}
-
 // message
 declare const enum messageType {
   error = "error",
@@ -47,15 +41,12 @@ declare const enum messageType {
   ready = "ready",
   start = "start",
   message = "message",
-  getMessage = "getMessage"
+  character = "character",
+  round = "round"
 
-  // create = "create",
-  // enter = "enter",
   // exit = "exit",
-  // ready = "ready",
-  // start = "start",
+
   // character = "character",
-  // round = "round",
   // vote = "vote",
   // card = "card",
   // drop = "drop",
@@ -63,18 +54,21 @@ declare const enum messageType {
 
   // error = "error"
 }
-
 declare interface MessageData<T extends messageType> {
   type: messageType;
   timestamp?: number;
-  content: T extends messageType.info
-    ? Info
-    : T extends messageType.createRoom | messageType.joinRoom
-    ? { id: string; number?: number }
+  content: T extends messageType.info ? Info : string;
+}
+
+declare interface ReceiveData<T extends messageType> {
+  type: messageType;
+  timestamp?: number;
+  content?: T extends messageType.createRoom
+    ? { id: string; number: number }
+    : T extends messageType.joinRoom
+    ? { id: string }
     : T extends messageType.start
-    ? { id }
-    : T extends messageType.message
-    ? Message
+    ? { id: string }
     : string;
 }
 
