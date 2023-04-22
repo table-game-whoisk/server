@@ -13,7 +13,6 @@ class IM {
     const nickname = params.get("nickname");
     const avatar = params.get("avatar");
     if (!id || !nickname || !avatar) {
-      console.log(id, nickname, avatar);
       return logger.error("error connected method");
     }
     let player = this.players.get(id);
@@ -21,13 +20,11 @@ class IM {
       player = new Player({ id, nickname, avatar });
       this.players.set(id, player);
     }
-    player.onStartListen(ws);
+
     ws.on("message", (data) => {
       const res = IM.parseMessage(data, ws);
-      if (player) {
-        res && Player.handleMessage(res, player);
-      }
     });
+    
     logger.info(`user[${nickname}] id[${id}] connected success`);
   }
   static parseMessage(data: WebSocket.RawData, ws: WebSocket.WebSocket) {
@@ -37,7 +34,7 @@ class IM {
         ws.send("pong");
         return null;
       }
-      return JSON.parse(res) as ReceiveData<messageType>;
+      return JSON.parse(res);
     } catch (e) {
       return null;
     }

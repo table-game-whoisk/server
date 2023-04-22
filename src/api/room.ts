@@ -4,7 +4,7 @@ import path from "path";
 const router = express.Router();
 
 class Room {
-  testRoom: RequestHandler = async (req, res, next) => {
+  test: RequestHandler = async (req, res, next) => {
     try {
       res.sendFile(path.resolve(__dirname, "../IM/ws.html"));
     } catch (e) {
@@ -15,7 +15,6 @@ class Room {
 
 export const room = new Room();
 
-router.get("/testRoom", room.testRoom);
-
+router.get("/test", room.test);
 
 export default router;
