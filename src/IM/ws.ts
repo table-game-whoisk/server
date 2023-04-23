@@ -5,7 +5,6 @@ import { Player } from "./player";
 
 class IM {
   players = new Map<string, Player>();
-  timer: NodeJS.Timer | null = null;
 
   connection(ws: WebSocket.WebSocket, req: IncomingMessage) {
     const params = new URLSearchParams(req.url!.slice(1));
@@ -15,16 +14,20 @@ class IM {
     if (!id || !nickname || !avatar) {
       return logger.error("error connected method");
     }
+
     let player = this.players.get(id);
     if (!player) {
       player = new Player({ id, nickname, avatar });
       this.players.set(id, player);
     }
-
+    Player.link(ws, player);
     ws.on("message", (data) => {
       const res = IM.parseMessage(data, ws);
+      if (player && res) {
+        Player.messageHandler(res, player);
+      }
     });
-    
+
     logger.info(`user[${nickname}] id[${id}] connected success`);
   }
   static parseMessage(data: WebSocket.RawData, ws: WebSocket.WebSocket) {
@@ -34,7 +37,7 @@ class IM {
         ws.send("pong");
         return null;
       }
-      return JSON.parse(res);
+      return JSON.parse(res) as ReceviceMessage<ReceiveType>;
     } catch (e) {
       return null;
     }

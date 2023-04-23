@@ -28,7 +28,6 @@
           </div>
         </div>
       </div>
-
       <div>
         <button id="ready">ready</button>
         <button id="start">start</button>
@@ -36,10 +35,14 @@
       <div>
         <button id="round">endRound</button>
       </div>
+      <span>卧底词语</span>
+      <div id="underCover"></div>
     </div>
     <ul id="messages" style="height: 300px; overflow: auto"></ul>
     <textarea name="" id="text" cols="30" rows="10"></textarea>
     <button id="send">send</button>
+    <button id="sendKey">sendKey</button>
+    <button id="sendVote">sendVote</button>
     <script>
       const avatarUrls = [
         "http://img.520touxiang.com/uploads/allimg/2018122110/1hnczuozxys.jpg",
@@ -94,12 +97,12 @@
           console.log(JSON.parse(data));
           const { type, content } = JSON.parse(data);
           if (type === "info") {
-            const {room} = content
-            if(!room) return
+            const { room } = content;
+            if (!room) return;
             query("messages").replaceChildren(
-              ... room.messageList.map(({ message }) => {
+              ...room.messages.map(({ messageFrom, message }) => {
                 const li = document.createElement("li");
-                li.innerHTML = message;
+                li.innerHTML = `[${messageFrom.nickname}]${message}`;
                 return li;
               })
             );
@@ -114,14 +117,16 @@
           ws.send("ping");
         }, 1000);
       }
+
       query("createRoom").onclick = () => {
         let roomId = query("roomId").value || generateRandomString(8);
-        ws && ws.send(JSON.stringify({ type: "createRoom", content: { id: roomId } }));
+        ws && ws.send(JSON.stringify({ type: "create", content: { id: roomId } }));
       };
+
       query("joinRoom").onclick = () => {
         let roomId = query("roomId").value;
         if (!roomId) return;
-        ws && ws.send(JSON.stringify({ type: "joinRoom", content: { id: roomId } }));
+        ws && ws.send(JSON.stringify({ type: "join", content: roomId }));
       };
       query("ready").onclick = () => {
         ws && ws.send(JSON.stringify({ type: "ready" }));
@@ -136,6 +141,7 @@
           query("text").value = "";
         }
       };
+
       query("round").onclick = () => {
         if (ws) {
           text && ws.send(JSON.stringify({ type: "round", content: { id } }));

@@ -1,15 +1,126 @@
+import { TimerTask } from "../utils/timerTask";
 import { Player } from "./player";
-import { Game } from "./game";
+
+export interface RoomOption {
+  id: string;
+  owner: string;
+  memberCount?: number;
+  subject?: string;
+}
 
 export class Room {
   static roomList = new Map<string, Room>();
-  id: string | null = null;
+
+  id: string;
   members = new Set<Player>();
-  owner: string | null = null;
-  game: Game | null = null;
-  status: roomStatus = roomStatus.ready;
-  memberCount: number = 4;
+  owner: string;
+  status: RoomStatus = RoomStatus.end;
+  memberCount: number;
+  subject?: string;
   messages: Message[] = [];
+
+  constructor({ id, owner, memberCount, subject }: RoomOption) {
+    this.id = id;
+    this.owner = owner;
+    this.memberCount = memberCount || 4;
+    this.subject = subject;
+  }
+
+  static createRoom(roomOptions: RoomOption, player: Player) {
+    const room = new Room(roomOptions);
+    Room.roomList.set(room.id, room);
+    room.addMember(player);
+  }
+  static destroyRoom(roomId: RoomId) {
+    Room.roomList.delete(roomId);
+  }
+  static findRoom(roomId: RoomId) {
+    return Room.roomList.get(roomId) || null;
+  }
+
+  setStatus(status: RoomStatus) {
+    this.status = status;
+    if (status === RoomStatus.addKey) {
+      TimerTask.register({
+        date: new Date(Date.now() + 1000 * 3),
+        action: () => {
+          this.members.forEach((player) => player.sendNotice(NoticeType.key));
+        }
+      });
+    } else if (status === RoomStatus.vote) {
+      TimerTask.register({
+        date: new Date(Date.now() + 1000 * 3),
+        action: () => {
+          this.members.forEach((player) => player.sendNotice(NoticeType.vote));
+        }
+      });
+    }
+    this.members.forEach((player) => player.sendInfo());
+  }
+
+  addMember(player: Player) {
+    if (this.findMember(player.id)) {
+      player.sendEroor("你已经在房间内了");
+      return;
+    }
+    if (this.members.size >= this.memberCount) {
+      player.sendEroor("房间已满");
+      return;
+    }
+    if (this.status !== RoomStatus.end) {
+      player.sendEroor("该房间在游戏中");
+      return;
+    }
+    player.room = this;
+    this.members.add(player);
+  }
+  findMember(id: PlayerId): Player | null {
+    let player: Player | null = null;
+    this.members.forEach((p) => {
+      if (p.id === id) {
+        player = p;
+      }
+    });
+    return player;
+  }
+  removeMember(player: Player) {
+    this.members.forEach((p) => {
+      if (player.id === p.id) {
+        this.members.delete(p);
+      }
+    });
+  }
+  disslove() {
+    this.members.forEach((player) => {
+      player.setStatus(PlayerStatus.online);
+      player.room = null;
+      // 通知玩家
+      this.members.delete(player);
+    });
+  }
+  getInfo(): RoomInfo {
+    const { id, members, messages, owner, memberCount, subject, status } = this;
+    let membersInfo: PlayerInfo[] = [];
+    members.forEach(({ id, avatar, status, nickname }) => membersInfo.push({ id, avatar, status, nickname }));
+    return { id, members: membersInfo, messages, owner, memberCount, subject, status };
+  }
+  notice() {}
+
+  addMessage(text: string, player?: Player, type?: NoticeType.key | NoticeType.vote) {
+    const messageFrom = {
+      id: player ? player.id : "0",
+      nickname: player ? player.nickname : "system",
+      avatar: player ? player.avatar : ""
+    };
+
+    this.messages.push({
+      timestamp: Date.now(),
+      type,
+      messageFrom,
+      message: text
+    });
+    this.members.forEach((player) => player.sendInfo());
+  }
 
   // static findRoom(roomId: string) {
   //   return Room.roomList.get(roomId);
