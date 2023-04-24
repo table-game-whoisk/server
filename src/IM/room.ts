@@ -1,6 +1,20 @@
 import { TimerTask } from "../utils/timerTask";
 import { Player } from "./player";
 
+function getRandomIndex(n: number, m: number) {
+  const results: number[] = [];
+  if (n > m) {
+    return results;
+  }
+  while (results.length < n) {
+    const randomNumber = Math.floor(Math.random() * (m + 1));
+    if (!results.includes(randomNumber)) {
+      results.push(randomNumber);
+    }
+  }
+  return results;
+}
+
 export interface RoomOption {
   id: string;
   owner: string;
@@ -18,6 +32,8 @@ export class Room {
   memberCount: number;
   subject?: string;
   messages: Message[] = [];
+  currentPlayer: PlayerInfo | null = null;
+  undercoverKey: string[] = [];
 
   constructor({ id, owner, memberCount, subject }: RoomOption) {
     this.id = id;
@@ -54,6 +70,12 @@ export class Room {
           this.members.forEach((player) => player.sendNotice(NoticeType.vote));
         }
       });
+    } else if (status === RoomStatus.round) {
+      const members = [...this.members];
+      const playingMembers = members.filter((player) => player.status === PlayerStatus.playing);
+      playingMembers[0] && this.setRound(playingMembers[0]);
+    } else if (status === RoomStatus.end) {
+      this.members.forEach((player) => player.setStatus(PlayerStatus.ready));
     }
     this.members.forEach((player) => player.sendInfo());
   }
@@ -73,6 +95,9 @@ export class Room {
     }
     player.room = this;
     this.members.add(player);
+    this.members.forEach((player) => {
+      player.sendInfo();
+    });
   }
   findMember(id: PlayerId): Player | null {
     let player: Player | null = null;
@@ -89,6 +114,16 @@ export class Room {
         this.members.delete(p);
       }
     });
+    if (this.members.size === 0) {
+      Room.destroyRoom(this.id);
+    } else {
+      // 重新任命房主
+      if (this.owner === player.id) {
+        const newPlayer = [...this.members][0];
+        this.owner = newPlayer.id;
+      }
+      this.members.forEach((player) => player.sendInfo());
+    }
   }
   disslove() {
     this.members.forEach((player) => {
@@ -99,13 +134,13 @@ export class Room {
     });
   }
   getInfo(): RoomInfo {
-    const { id, members, messages, owner, memberCount, subject, status } = this;
+    const { id, members, messages, owner, memberCount, subject, status, currentPlayer, undercoverKey } = this;
     let membersInfo: PlayerInfo[] = [];
-    members.forEach(({ id, avatar, status, nickname }) => membersInfo.push({ id, avatar, status, nickname }));
-    return { id, members: membersInfo, messages, owner, memberCount, subject, status };
+    members.forEach(({ id, avatar, status, nickname, voteCount }) =>
+      membersInfo.push({ id, avatar, status, nickname, voteCount })
+    );
+    return { id, members: membersInfo, messages, owner, memberCount, subject, status, currentPlayer, undercoverKey };
   }
-  notice() {}
-
   addMessage(text: string, player?: Player, type?: NoticeType.key | NoticeType.vote) {
     const messageFrom = {
       id: player ? player.id : "0",
@@ -121,42 +156,18 @@ export class Room {
     });
     this.members.forEach((player) => player.sendInfo());
   }
+  setMembersRole() {
+    const members = [...this.members];
+    let undercoverCount = Math.ceil(members.length * 0.2);
+    getRandomIndex(undercoverCount, this.memberCount).forEach((index) => {
+      members[index].role = "undercover";
+      members[index].key && this.undercoverKey.push(members[index].key!);
+    });
+    members.forEach((player, index) => player.sendInfo());
+  }
 
-  // static findRoom(roomId: string) {
-  //   return Room.roomList.get(roomId);
-  // }
-  // static createRoom(roomId: string, number: number, player: Player) {
-  //   if (Room.roomList.has(roomId)) {
-  //     player.sendError("房间已存在");
-  //     return;
-  //   }
-  //   const room = new Room();
-  //   room.memberCount = number;
-  //   room.id = roomId;
-  //   room.owner = player.id;
-  //   Room.roomList.set(roomId, room);
-  //   Room.enterRoom(roomId, player);
-  // }
-  // static enterRoom(roomId: string, player: Player) {
-  //   let room = Room.findRoom(roomId);
-  //   if (!room) {
-  //     player.sendError("房间不存在");
-  //     return;
-  //   }
-  //   if (room.status === roomStatus.playing) {
-  //     player.sendError("该房间已开始游戏");
-  //     return;
-  //   }
-  //   if (room.members.size < room.memberCount) {
-  //     room.members.add(player);
-  //     player.room = room;
-  //   } else {
-  //     player.sendError("房间已满");
-  //   }
-  //   room.members.forEach((player) => {
-  //     player.sendInfo();
-  //   });
-  // }
+  setRound(player: Player) {}
+
   // static exitRoom(roomId: string, player: Player) {
   //   const room = Room.roomList.get(roomId);
   //   if (!room) return;
@@ -172,6 +183,7 @@ export class Room {
   //     room.members.forEach((player) => player.sendInfo());
   //   }
   // }
+
   // static destroyRoom(roomId: string, room: Room) {
   //   Room.roomList.delete(roomId);
   // }
@@ -184,29 +196,6 @@ export class Room {
   //   room.setRoomStatus(roomStatus.playing);
   // }
 
-  // getMembers(): PlayerInfo[] | null {
-  //   if (this.members.size > 0) {
-  //     return [...this.members].map((player) => player.rawInfo());
-  //   }
-  //   return null;
-  // }
-  // rawInfo(): RoomInfo | null {
-  //   const { id, owner, messages, status } = this;
-  //   if (!id) return null;
-  //   return {
-  //     id,
-  //     owner,
-  //     members: this.getMembers(),
-  //     messageList: messages,
-  //     status
-  //   };
-  // }
-  // setRoomStatus(status: roomStatus) {
-  //   this.status = status;
-  //   this.members.forEach((player) => {
-  //     player.sendInfo();
-  //   });
-  // }
   // onMessage(data: ReceiveData<messageType.message>, player?: Player) {
   //   const { content } = data;
   //   if (!content) return;

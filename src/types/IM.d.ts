@@ -18,6 +18,7 @@ declare const enum RoomStatus {
 }
 
 declare const enum ReceiveType {
+  info = "info",
   create = "create",
   join = "join",
   exit = "exit",
@@ -82,6 +83,8 @@ declare interface Info {
   avatar: string;
   status: PlayerStatus;
   room: RoomInfo | null;
+  key: string | null;
+  role: "undercover" | "civilian";
 }
 
 declare interface PlayerInfo {
@@ -89,6 +92,7 @@ declare interface PlayerInfo {
   nickname: string;
   avatar: string;
   status: PlayerStatus;
+  voteCount: number;
 }
 
 declare interface RoomInfo {
@@ -98,5 +102,7 @@ declare interface RoomInfo {
   messages: Message[];
   owner: PlayerId;
   memberCount: memberCount;
+  currentPlayer: PlayerInfo | null;
   subject?: string;
+  undercoverKey: string[];
 }

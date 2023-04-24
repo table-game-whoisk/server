@@ -11,6 +11,9 @@ export class Player implements PlayerInfo {
   status: PlayerStatus = PlayerStatus.online;
   ws: WebSocket.WebSocket | null = null;
   room: Room | null = null;
+  role: "undercover" | "civilian" = "civilian";
+  key: string | null = null;
+  voteCount: number = 0;
 
   constructor(info: UserProp) {
     const { id, nickname, avatar } = info;
@@ -30,6 +33,9 @@ export class Player implements PlayerInfo {
   static messageHandler(data: ReceviceMessage<ReceiveType>, player: Player) {
     const { type } = data;
     switch (type) {
+      case ReceiveType.info:
+        player.sendInfo;
+        break;
       case ReceiveType.create:
       case ReceiveType.join:
         player.handleEnterRoom(data);
@@ -45,6 +51,18 @@ export class Player implements PlayerInfo {
         break;
       case ReceiveType.message:
         player.handleMessage(data);
+        break;
+      case ReceiveType.key:
+        player.handleKey(data);
+        break;
+      case ReceiveType.vote:
+        player.handleVote(data);
+        break;
+      case ReceiveType.continue:
+        player.handleContinue();
+        break;
+      case ReceiveType.disslove:
+        player.handleDeisslove();
         break;
       default:
         break;
@@ -64,7 +82,9 @@ export class Player implements PlayerInfo {
     if (this.room) {
       // 意外断开处理
       // 通知房间内其他玩家，房间等待玩家重连，超时解散房间
-      if (this.room.status === RoomStatus.end) {
+      if (this.status === PlayerStatus.online) {
+        this.room.removeMember(this);
+        this.room = null;
       }
     } else {
       this.room = null;
@@ -75,9 +95,14 @@ export class Player implements PlayerInfo {
 
   setStatus(status: PlayerStatus) {
     const { room } = this;
+    if (status === PlayerStatus.ready && !room) {
+      this.sendEroor("请先加入一个房间");
+      return;
+    }
     this.status = status;
-    room ? room.members.forEach((player) => player.sendInfo()) : this.sendInfo();
+    room?.members.forEach((player) => player.sendInfo());
   }
+
   handleEnterRoom(data: ReceviceMessage<ReceiveType.create | ReceiveType.join>) {
     const { type } = data;
     if (type === ReceiveType.create) {
@@ -96,7 +121,6 @@ export class Player implements PlayerInfo {
       }
       room.addMember(this);
     }
-    this.sendInfo();
   }
   handleExitRoom() {
     const { room } = this;
@@ -141,12 +165,30 @@ export class Player implements PlayerInfo {
     if (!room) return;
     room.addMessage(content, this);
   }
+  handleKey(data: ReceviceMessage<ReceiveType.key>) {
+    const { content } = data;
+    this.key = content;
+    let hasKeyCount = 0;
+    this.sendInfo();
+    this.room?.members.forEach((player) => {
+      if (player.key) {
+        hasKeyCount += 1;
+      }
+    });
+    if (hasKeyCount === this.room?.memberCount) {
+      this.room.setMembersRole();
+      this.room.setStatus(RoomStatus.round);
+    }
+  }
+  handleVote(data: ReceviceMessage<ReceiveType.vote>) {}
+  handleContinue() {}
+  handleDeisslove() {}
 
   sendInfo() {
-    const { id, nickname, avatar, status, room } = this;
+    const { id, nickname, avatar, status, room, key, role } = this;
     this.sendMessage<SendType.info>({
       type: SendType.info,
-      content: { id, nickname, avatar, status, room: room?.getInfo() || null }
+      content: { id, nickname, avatar, status, room: room?.getInfo() || null, key, role }
     });
   }
   sendEroor(message: string) {
@@ -155,6 +197,8 @@ export class Player implements PlayerInfo {
   sendNotice(notice: NoticeType) {
     this.sendMessage<SendType.notice>({ type: SendType.notice, content: notice });
   }
+
+  resetInfo() {}
 
   // static handleMessage<T extends messageType>(data: ReceiveData<T>, player: Player) {
   //   switch (data.type) {
