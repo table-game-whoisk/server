@@ -28,7 +28,6 @@ declare const enum ReceiveType {
   key = "key", //玩家提交的词语
   message = "message",
   vote = "vote",
-  continue = "continue",
   disslove = "disslove"
 }
 

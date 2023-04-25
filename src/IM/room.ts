@@ -31,8 +31,9 @@ export class Room {
   status: RoomStatus = RoomStatus.end;
   memberCount: number;
   subject?: string;
+
   messages: Message[] = [];
-  currentPlayer: PlayerInfo | null = null;
+  currentPlayer: Player | null = null;
   undercoverKey: string[] = [];
 
   constructor({ id, owner, memberCount, subject }: RoomOption) {
@@ -63,21 +64,32 @@ export class Room {
           this.members.forEach((player) => player.sendNotice(NoticeType.key));
         }
       });
+    } else if (status === RoomStatus.round) {
+      let playingMembers = this.residuePlayers();
+      if (playingMembers) {
+        const currentPlayer = playingMembers[0];
+        currentPlayer && this.setRound(this, currentPlayer);
+      }
     } else if (status === RoomStatus.vote) {
+      let playingMembers = this.residuePlayers();
+      if (playingMembers) {
+        playingMembers.forEach((player) => (player.status = PlayerStatus.playing));
+      }
       TimerTask.register({
         date: new Date(Date.now() + 1000 * 3),
         action: () => {
-          this.members.forEach((player) => player.sendNotice(NoticeType.vote));
+          this.members.forEach((player) => {
+            player.sendNotice(NoticeType.vote);
+          });
         }
       });
-    } else if (status === RoomStatus.round) {
-      const members = [...this.members];
-      const playingMembers = members.filter((player) => player.status === PlayerStatus.playing);
-      playingMembers[0] && this.setRound(playingMembers[0]);
     } else if (status === RoomStatus.end) {
-      this.members.forEach((player) => player.setStatus(PlayerStatus.ready));
+      this.messages = [];
+      this.undercoverKey = [];
+      this.currentPlayer = null;
+      this.members.forEach((player) => player.resetPlayer());
+      this.members.forEach((player) => player.sendInfo());
     }
-    this.members.forEach((player) => player.sendInfo());
   }
 
   addMember(player: Player) {
@@ -139,9 +151,38 @@ export class Room {
     members.forEach(({ id, avatar, status, nickname, voteCount }) =>
       membersInfo.push({ id, avatar, status, nickname, voteCount })
     );
-    return { id, members: membersInfo, messages, owner, memberCount, subject, status, currentPlayer, undercoverKey };
+    return {
+      id,
+      members: membersInfo,
+      messages,
+      owner,
+      memberCount,
+      subject,
+      status,
+      currentPlayer: currentPlayer
+        ? {
+            id: currentPlayer.id,
+            avatar: currentPlayer.avatar,
+            nickname: currentPlayer.nickname,
+            status: currentPlayer.status,
+            voteCount: currentPlayer.voteCount
+          }
+        : null,
+      undercoverKey
+    };
   }
   addMessage(text: string, player?: Player, type?: NoticeType.key | NoticeType.vote) {
+    if (player?.status === PlayerStatus.mute) {
+      player.sendEroor("其他玩家回合时，不能发言");
+      return;
+    }
+    if (player && this.status === RoomStatus.round) {
+      const playingMembers = this.residuePlayers();
+      if (playingMembers) {
+        player.status = PlayerStatus.mute;
+        this.setNextRoundPlayer(player);
+      }
+    }
     const messageFrom = {
       id: player ? player.id : "0",
       nickname: player ? player.nickname : "system",
@@ -156,63 +197,88 @@ export class Room {
     });
     this.members.forEach((player) => player.sendInfo());
   }
-  setMembersRole() {
+  setMembersRole(key: string, player: Player) {
     const members = [...this.members];
-    let undercoverCount = Math.ceil(members.length * 0.2);
-    getRandomIndex(undercoverCount, this.memberCount).forEach((index) => {
-      members[index].role = "undercover";
-      members[index].key && this.undercoverKey.push(members[index].key!);
+    player.key = key;
+    player.sendInfo();
+
+    if (members.filter((player) => player.key).length === this.memberCount) {
+      let undercoverCount = Math.ceil(members.length * 0.2);
+      getRandomIndex(undercoverCount, members.length - 1).forEach((index) => {
+        members[index].role = "undercover";
+        members[index].key && this.undercoverKey.push(members[index].key!);
+      });
+      this.setStatus(RoomStatus.round);
+    }
+  }
+  setRound(room: Room, currentPlayer: Player) {
+    room.currentPlayer = currentPlayer;
+    currentPlayer.sendNotice(NoticeType.testimony);
+    room.members.forEach((player) => {
+      player.status = player.status === PlayerStatus.playing ? PlayerStatus.mute : player.status;
     });
-    members.forEach((player, index) => player.sendInfo());
+    currentPlayer.status = PlayerStatus.playing;
+    room.members.forEach((player) => player.sendInfo());
+
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 10),
+      action: () => room.setNextRoundPlayer.call(room, currentPlayer)
+    });
   }
 
-  setRound(player: Player) {}
+  handleVote(voteId: PlayerId, player: Player) {
+    let count = 0;
+    let playingMembers = this.residuePlayers();
+    if (playingMembers) {
+      playingMembers.forEach((p) => {
+        if (p.id === voteId) p.voteCount += 1;
+        count += p.voteCount;
+      });
+      player.sendInfo();
+      if (count === playingMembers.length) {
+        let outPlyer: Player = playingMembers[0];
+        outPlyer &&
+          playingMembers.forEach((player) => {
+            outPlyer = player.voteCount > outPlyer.voteCount ? player : outPlyer;
+            player.voteCount = 0; // 统计完票数后 归零
+          });
+        outPlyer.setStatus(PlayerStatus.out);
 
-  // static exitRoom(roomId: string, player: Player) {
-  //   const room = Room.roomList.get(roomId);
-  //   if (!room) return;
-  //   room.members.delete(player); //删掉断开的用户
-  //   if (room?.members.size === 0) {
-  //     Room.destroyRoom(roomId, room);
-  //   } else {
-  //     // 重新任命房主
-  //     if (room.owner === player.id) {
-  //       const newPlayer = [...room.members][0];
-  //       room.owner = newPlayer.id;
-  //     }
-  //     room.members.forEach((player) => player.sendInfo());
-  //   }
-  // }
+        TimerTask.register({
+          date: new Date(Date.now() + 1000 * 3),
+          action: () => {
+            this.setStatus(RoomStatus.round);
+          }
+        });
+      }
+    }
+  }
 
-  // static destroyRoom(roomId: string, room: Room) {
-  //   Room.roomList.delete(roomId);
-  // }
-  // static start(roomId: string) {
-  //   const room = Room.findRoom(roomId);
-  //   if (!room) return;
-  //   if (!room.game) {
-  //     room.game = new Game(room);
-  //   }
-  //   room.setRoomStatus(roomStatus.playing);
-  // }
+  setNextRoundPlayer(currentPlayer: Player) {
+    if (this.currentPlayer?.id === currentPlayer.id) {
+      let playingMembers = this.residuePlayers();
+      if (!playingMembers) return;
+      if (playingMembers.length <= 0) return;
+      const currRoundIndex = playingMembers.findIndex((item) => item.id === currentPlayer.id);
+      const nextPlayer = playingMembers[currRoundIndex + 1] || null;
+      nextPlayer ? this.setRound(this, nextPlayer) : this.setStatus(RoomStatus.vote);
+    }
+  }
 
-  // onMessage(data: ReceiveData<messageType.message>, player?: Player) {
-  //   const { content } = data;
-  //   if (!content) return;
-  //   if (player && this.game?.checkMessage(content, player)) return;
-  //   this?.messages.push({
-  //     timestamp: Date.now(),
-  //     messageFrom: player?.rawInfo() || {
-  //       id: "0",
-  //       nickname: "system",
-  //       avatar: null,
-  //       status: ""
-  //     },
-  //     message: content
-  //   });
-  //   this.members.forEach((player) => player.sendInfo());
-  // }
-  // roomNotice(text: string) {
-  //   this.onMessage({ type: messageType.message, content: text });
-  // }
+  residuePlayers() {
+    const members = [...this.members];
+    const playingMembers = members.filter((player) => player.status !== PlayerStatus.out);
+    let undercoverCount = 0;
+    playingMembers.forEach((player) => {
+      if (player.role === "undercover") {
+        undercoverCount += 1;
+      }
+    });
+    if (undercoverCount === 0 || playingMembers.length - undercoverCount === undercoverCount) {
+      this.setStatus(RoomStatus.end);
+      return null;
+    }
+    return playingMembers;
+  }
+  
 }
