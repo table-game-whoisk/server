@@ -58,8 +58,9 @@ export class Room {
   setStatus(status: RoomStatus) {
     this.status = status;
     if (status === RoomStatus.addKey) {
+      this.members.forEach((player) => player.sendInfo());
       TimerTask.register({
-        date: new Date(Date.now() + 1000 * 3),
+        date: new Date(Date.now() + 1000 * 1.5),
         action: () => {
           this.members.forEach((player) => player.sendNotice(NoticeType.key));
         }
@@ -67,16 +68,22 @@ export class Room {
     } else if (status === RoomStatus.round) {
       let playingMembers = this.residuePlayers();
       if (playingMembers) {
+        this.addMessage("请玩家轮流发言");
+        playingMembers.forEach((player) => (player.voteCount = 0));
         const currentPlayer = playingMembers[0];
         currentPlayer && this.setRound(this, currentPlayer);
       }
     } else if (status === RoomStatus.vote) {
       let playingMembers = this.residuePlayers();
       if (playingMembers) {
-        playingMembers.forEach((player) => (player.status = PlayerStatus.playing));
+        playingMembers.forEach((player) => {
+          player.isVoted = false;
+          player.status = PlayerStatus.playing;
+        });
       }
+      this.members.forEach((player) => player.sendInfo());
       TimerTask.register({
-        date: new Date(Date.now() + 1000 * 3),
+        date: new Date(Date.now() + 1000 * 1.5),
         action: () => {
           this.members.forEach((player) => {
             player.sendNotice(NoticeType.vote);
@@ -171,9 +178,13 @@ export class Room {
       undercoverKey
     };
   }
-  addMessage(text: string, player?: Player, type?: NoticeType.key | NoticeType.vote) {
+  addMessage(text: string, player?: Player) {
     if (player?.status === PlayerStatus.mute) {
       player.sendEroor("其他玩家回合时，不能发言");
+      return;
+    }
+    if (player?.status === PlayerStatus.out) {
+      player.sendEroor("被淘汰玩家不能发言");
       return;
     }
     if (player && this.status === RoomStatus.round) {
@@ -191,7 +202,6 @@ export class Room {
 
     this.messages.push({
       timestamp: Date.now(),
-      type,
       messageFrom,
       message: text
     });
@@ -213,44 +223,59 @@ export class Room {
   }
   setRound(room: Room, currentPlayer: Player) {
     room.currentPlayer = currentPlayer;
-    currentPlayer.sendNotice(NoticeType.testimony);
-    room.members.forEach((player) => {
-      player.status = player.status === PlayerStatus.playing ? PlayerStatus.mute : player.status;
+    TimerTask.register({
+      date: new Date(Date.now() + 1000 * 1),
+      action: () => room.addMessage(`${currentPlayer.nickname}回合开始`)
     });
-    currentPlayer.status = PlayerStatus.playing;
+    currentPlayer.sendNotice(NoticeType.testimony);
+    const playingMembers = room.residuePlayers();
+    if (playingMembers) {
+      playingMembers.forEach((player) => {
+        player.status = currentPlayer.id === player.id ? PlayerStatus.playing : PlayerStatus.mute;
+      });
+    }
     room.members.forEach((player) => player.sendInfo());
 
     TimerTask.register({
-      date: new Date(Date.now() + 1000 * 10),
+      date: new Date(Date.now() + 1000 * 60),
       action: () => room.setNextRoundPlayer.call(room, currentPlayer)
     });
   }
 
   handleVote(voteId: PlayerId, player: Player) {
-    let count = 0;
     let playingMembers = this.residuePlayers();
     if (playingMembers) {
-      playingMembers.forEach((p) => {
-        if (p.id === voteId) p.voteCount += 1;
-        count += p.voteCount;
-      });
-      player.sendInfo();
+      const count = playingMembers.reduce((sum, currnt) => {
+        if (currnt.id === voteId) {
+          currnt.voteCount += 1;
+        }
+        return (sum += currnt.voteCount);
+      }, 0);
       if (count === playingMembers.length) {
-        let outPlyer: Player = playingMembers[0];
-        outPlyer &&
-          playingMembers.forEach((player) => {
-            outPlyer = player.voteCount > outPlyer.voteCount ? player : outPlyer;
-            player.voteCount = 0; // 统计完票数后 归零
+        let index = playingMembers.reduce((maxIndex, current, currRoundIndex, arr) => {
+          if (current.voteCount > arr[maxIndex].voteCount) {
+            return currRoundIndex;
+          }
+          return maxIndex;
+        }, 0);
+        if (playingMembers[index].voteCount > 1) {
+          playingMembers[index].setStatus(PlayerStatus.out);
+          const { nickname, role, key } = playingMembers[index];
+          TimerTask.register({
+            date: new Date(Date.now() + 1000 * 3),
+            action: () => {
+              this.addMessage(`玩家${nickname}出局，身份是${role === "civilian" ? "平民" : "卧底"},他关键词：${key}`);
+            }
           });
-        outPlyer.setStatus(PlayerStatus.out);
-
+        }
         TimerTask.register({
-          date: new Date(Date.now() + 1000 * 3),
+          date: new Date(Date.now() + 1000 * 1),
           action: () => {
             this.setStatus(RoomStatus.round);
           }
         });
       }
+      playingMembers.forEach((p) => p.sendInfo());
     }
   }
 
@@ -261,24 +286,68 @@ export class Room {
       if (playingMembers.length <= 0) return;
       const currRoundIndex = playingMembers.findIndex((item) => item.id === currentPlayer.id);
       const nextPlayer = playingMembers[currRoundIndex + 1] || null;
-      nextPlayer ? this.setRound(this, nextPlayer) : this.setStatus(RoomStatus.vote);
+      nextPlayer
+        ? this.setRound(this, nextPlayer)
+        : this.status === RoomStatus.round
+        ? this.setStatus(RoomStatus.vote)
+        : null;
     }
   }
+
+  // outPlayer(playerId: PlayerId, player: Player) {
+  //   if (player.role !== "undercover") {
+  //     return;
+  //   }
+  //   let playingMembers = this.residuePlayers();
+  //   if (playingMembers) {
+  //     let outPlayer = playingMembers.find((p) => p.id === playerId);
+  //     if (outPlayer) {
+  //       if (outPlayer.role === "undercover") {
+  //         player.sendEroor("你不能淘汰你的同盟");
+  //         return;
+  //       }
+  //       outPlayer.setStatus(PlayerStatus.out);
+  //       const { nickname, role, key } = outPlayer;
+  //       TimerTask.register({
+  //         date: new Date(Date.now() + 1000 * 3),
+  //         action: () => {
+  //           this.addMessage(`玩家${nickname}被卧底淘汰出局,他关键词：${key}`);
+  //         }
+  //       });
+  //     }
+
+  //     TimerTask.register({
+  //       date: new Date(Date.now() + 1000 * 2),
+  //       action: () => {
+  //         this.setStatus(RoomStatus.round);
+  //       }
+  //     });
+  //   }
+  // }
 
   residuePlayers() {
     const members = [...this.members];
     const playingMembers = members.filter((player) => player.status !== PlayerStatus.out);
+
     let undercoverCount = 0;
     playingMembers.forEach((player) => {
       if (player.role === "undercover") {
         undercoverCount += 1;
       }
     });
+
     if (undercoverCount === 0 || playingMembers.length - undercoverCount === undercoverCount) {
-      this.setStatus(RoomStatus.end);
+      this.addMessage(undercoverCount === 0 ? "平民胜利" : "卧底胜利");
+      TimerTask.register({
+        date: new Date(Date.now() + 1000 * 2),
+        action: () => {
+          this.setStatus(RoomStatus.end);
+        }
+      });
+
       return null;
     }
+
     return playingMembers;
   }
-  
 }

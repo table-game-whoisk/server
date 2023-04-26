@@ -1,5 +1,4 @@
 import WebSocket from "ws";
-import { TimerTask } from "../utils/timerTask";
 import { Room } from "./room";
 import { logger } from "../utils/logger";
 import { generateRandomKey } from "../utils";
@@ -15,6 +14,7 @@ export class Player implements PlayerInfo {
   role: "undercover" | "civilian" = "civilian";
   key: string | null = null;
   voteCount: number = 0;
+  isVoted: boolean = true;
 
   constructor(info: UserProp) {
     const { id, nickname, avatar } = info;
@@ -154,6 +154,7 @@ export class Player implements PlayerInfo {
     room.members.forEach((player) => {
       player.status = PlayerStatus.playing;
     });
+    room.addMessage("开始游戏");
     room.setStatus(RoomStatus.addKey);
   }
   handleMessage(data: ReceviceMessage<ReceiveType.message>) {
@@ -171,6 +172,11 @@ export class Player implements PlayerInfo {
   }
   handleVote(data: ReceviceMessage<ReceiveType.vote>) {
     const { content } = data;
+    if (this.status !== PlayerStatus.playing || this.isVoted) {
+      this.sendEroor("现在不能投票");
+      return;
+    }
+    this.isVoted = true;
     this.room?.handleVote(content, this);
   }
   handleDeisslove() {
@@ -182,8 +188,11 @@ export class Player implements PlayerInfo {
       Room.destroyRoom(this.room.id);
       this.room.members.forEach((player) => {
         player.resetPlayer();
+        this.room?.removeMember(player);
+        player.room = null;
         player.sendInfo();
       });
+      this.room = null;
     }
   }
   sendInfo() {
@@ -201,6 +210,7 @@ export class Player implements PlayerInfo {
   }
   resetPlayer() {
     this.key = null;
+    this.isVoted = true;
     this.status = PlayerStatus.online;
     this.voteCount = 0;
     this.role = "civilian";
