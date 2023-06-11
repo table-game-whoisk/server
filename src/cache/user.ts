@@ -30,7 +30,8 @@ export class UserCache {
       };
 
       const response = await axios(config);
-      UserCache.token = response?.data?.token || "";
+
+      UserCache.token = response?.data?.data?.token || "";
     } catch (e) {
       console.log(e);
     }
