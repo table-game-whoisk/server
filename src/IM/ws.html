@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .flex {
+        display: flex;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="flex">
+        <img height="50px" width="50px" src="" alt="" id="avatar" />
+        <div style="margin-left: 30px">
+          <div>
+            nickname: <input type="text" id="nickname" />
+            <button id="connect">connect</button>
+            <button id="close">close</button>
+          </div>
+          <div>
+            roomid: <input type="text" id="roomId" /> <button id="joinRoom">加入房间</button>
+            <button id="createRoom">创建房间</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <button id="ready">ready</button>
+        <button id="start">start</button>
+      </div>
+      <div>
+        <button id="round">endRound</button>
+      </div>
+      <span>卧底词语</span>
+      <div id="underCover"></div>
+    </div>
+    <ul id="messages" style="height: 300px; overflow: auto"></ul>
+    <textarea name="" id="text" cols="30" rows="10"></textarea>
+    <button id="send">send</button>
+    <button id="sendKey">sendKey</button>
+    <button id="vote">sendVote</button>
+    <script>
+      const avatarUrls = [
+        "http://img.520touxiang.com/uploads/allimg/2018122110/1hnczuozxys.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/n0xyfe52qbn.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/0jrrouozrw3.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/fk5b0xd02gb.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/5w5cvnax4b4.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/fi4yv0dnddb.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/w50cfhehfmm.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/32eykkfknsl.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/3varmbmpm45.jpg",
+        "http://img.520touxiang.com/uploads/allimg/2018122110/xom43z0t1b4.jpg"
+      ];
+      let ws = null;
+      let timer = null;
+      const id = generateRandomString(8);
+      const avatarUrl = avatarUrls[Math.floor(Math.random() * 10)];
+      function query(id) {
+        return document.getElementById(id);
+      }
+
+      query("avatar").setAttribute("src", avatarUrl);
+      function generateRandomString(length) {
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+          result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+      }
+
+      query("connect").onclick = () => {
+        const nickname = query("nickname").value || generateRandomString(8);
+        ws = new WebSocket(`ws://192.168.3.8:5000?id=${id}&nickname=${nickname}&avatar=${avatarUrl}`);
+        ws.onopen = () => {
+          console.log("Connection open ...");
+          heartcheck();
+        };
+        ws.onclose = () => {
+          console.log("Connection close ...");
+          clearInterval(timer);
+          timer = null;
+        };
+        ws.onerror = (e) => {
+          console.log(e);
+        };
+        const ulElement = query("messages");
+        ws.onmessage = ({ data }) => {
+          if (data === "pong") {
+            return;
+          }
+          console.log(JSON.parse(data));
+          const { type, content } = JSON.parse(data);
+          if (type === "info") {
+            const { room } = content;
+            if (!room) return;
+            query("messages").replaceChildren(
+              ...room.messages.map(({ messageFrom, message }) => {
+                const li = document.createElement("li");
+                li.innerHTML = `[${messageFrom.nickname}]${message}`;
+                return li;
+              })
+            );
+          }
+        };
+        query("close").onclick = () => {
+          ws.close();
+        };
+      };
+      function heartcheck() {
+        timer = setInterval(() => {
+          ws.send("ping");
+        }, 1000);
+      }
+
+      query("createRoom").onclick = () => {
+        let roomId = query("roomId").value || generateRandomString(8);
+        ws && ws.send(JSON.stringify({ type: "create", content: { id: roomId } }));
+      };
+
+      query("joinRoom").onclick = () => {
+        let roomId = query("roomId").value;
+        if (!roomId) return;
+        ws && ws.send(JSON.stringify({ type: "join", content: roomId }));
+      };
+      query("ready").onclick = () => {
+        ws && ws.send(JSON.stringify({ type: "ready" }));
+      };
+      query("start").onclick = () => {
+        ws && ws.send(JSON.stringify({ type: "start" }));
+      };
+      query("send").onclick = () => {
+        if (ws) {
+          const text = query("text").value;
+          text && ws.send(JSON.stringify({ type: "message", content: text }));
+          query("text").value = "";
+        }
+      };
+      query("sendKey").onclick = () => {
+        if (ws) {
+          const text = query("text").value;
+          text && ws.send(JSON.stringify({ type: "key", content: text }));
+          query("text").value = "";
+        }
+      };
+      query("vote").onclick = () => {
+        if (ws) {
+          const text = query("text").value;
+          text && ws.send(JSON.stringify({ type: "vote", content: text }));
+          query("text").value = "";
+        }
+      };
+      
+      query("round").onclick = () => {
+        if (ws) {
+          text && ws.send(JSON.stringify({ type: "round", content: { id } }));
+        }
+      };
+    </script>
+  </body>
+</html>
