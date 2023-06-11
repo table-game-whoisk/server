@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --config ./jest.config.ts",
-    "start": "pm2 dist/src/index.js",
+    "start": "pm2 start dist/src/index.js",
     "dev": "ts-node-dev --project tsconfig.json --files src/index.ts",
     "build":"tsc",
     "e2e:open": "cypress open",
