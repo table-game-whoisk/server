@@ -48,7 +48,7 @@ let port = process.env.WS_SERVER_PORT;
 
 export const createWebsocketServer = () => {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket.Server({ port });
+    const ws = new WebSocket.Server({ host: "0.0.0.0", port });
 
     ws.on("listening", () => {
       logger.info("websocket listening on port " + port);
