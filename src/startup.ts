@@ -13,5 +13,6 @@ export const startup = async () => {
   }
 
   await UserCache.initCache();
+  await UserCache.initUpload();
   // await MaterialCache.initCache();
 };

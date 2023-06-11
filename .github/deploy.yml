@@ -1,0 +1,51 @@
+name: deploy-website
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install Node.js
+        uses: actions/setup-node@v2.5.0
+        with:
+          node-version: "14.X"
+
+      - name: install dep
+        run: npm install
+
+      - name: build app
+        run: npm run build
+
+      - name: copy file dist ssh password
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          password: ${{ secrets.PASS }}
+          port: 22
+          source: "dist/"
+          target: "/usr/share/nginx/html"
+
+      - name: Send mail
+        if: always()
+        uses: dawidd6/action-send-mail@v2
+        with:
+          # mail server settings
+          server_address: smtp.qq.com
+          server_port: 465
+          # user credentials
+          username: 3466435280@qq.com
+          password: kzpecapqfshcdbbj
+          # email subject
+          subject: ${{ github.job }} job of ${{ github.repository }} has ${{ job.status }}
+          # email body as text
+          body: ${{ github.job }} job in worflow ${{ github.workflow }} of ${{ github.repository }} has ${{ job.status }}
+          # comma-separated string, send email to
+          to: alex.lichangnan@gmail.com
+          # from email name
+          from: Alex
