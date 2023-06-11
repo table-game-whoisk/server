@@ -9,6 +9,7 @@ export class UserCache {
     const list = await UserModel.findAll();
     list.forEach((item) => UserCache.list.set(item.getDataValue("id"), item));
   }
+  static token = "";
 
   static async initUpload() {
     try {
@@ -28,13 +29,8 @@ export class UserCache {
         data: data
       };
 
-      axios(config)
-        .then(function (response) {
-          console.log(JSON.stringify(response.data));
-        })
-        .catch(function (error) {
-          console.log(error);
-        });
+      const response = await axios(config);
+      UserCache.token = response?.data?.token || "";
     } catch (e) {
       console.log(e);
     }
