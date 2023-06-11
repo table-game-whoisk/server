@@ -2,6 +2,7 @@ import { Model } from "sequelize";
 import { UserModel } from "../db/User.model";
 import axios from "axios";
 import FormData from "form-data";
+import tunnel from "tunnel";
 
 export class UserCache {
   static list = new Map<string, Model<UserProp, UserProp>>();
@@ -17,20 +18,22 @@ export class UserCache {
       data.append("username", "coolechi@foxmail.com");
       data.append("password", "wwmm@xy123");
 
-      const config = {
-        method: "post",
+      const agent = tunnel.httpsOverHttp({
+        proxy: {
+          host: "213.52.102.32",
+          port: 10800
+        }
+      });
+
+      const response = await axios.request({
         url: "https://sm.ms/api/v2/token",
-        headers: {
-          Accept: "*/*",
-          Host: "sm.ms",
-          Connection: "keep-alive",
-          ...data.getHeaders()
-        },
-        data: data
-      };
+        method: "post",
+        data: data,
+        httpsAgent: agent,
+        proxy: false // 设置axios不要自动检测命令行代理设置
+      });
 
-      const response = await axios(config);
-
+      console.log(response.data.data);
       UserCache.token = response?.data?.data?.token || "";
     } catch (e) {
       console.log(e);
