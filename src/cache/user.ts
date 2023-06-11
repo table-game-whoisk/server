@@ -33,11 +33,8 @@ export class UserCache {
         proxy: false // 设置axios不要自动检测命令行代理设置
       });
 
-      console.log(response.data.data);
       UserCache.token = response?.data?.data?.token || "";
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) {}
   }
 
   static findUser(id: string) {
